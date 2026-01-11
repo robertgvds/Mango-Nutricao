@@ -1,22 +1,18 @@
-import 'package:app/classes/planoalimentar.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart'; // Certifique-se de ter este pacote
 import '../../widgets/app_colors.dart';
 
 // Classes e Repos
 import '../../classes/antropometria.dart';
+import '../../classes/plano_alimentar.dart';
 import '../../classes/refeicao.dart';
 import '../../database/antropometria_repository.dart';
 import '../../database/plano_alimentar_repository.dart';
 
-// Telas de Criação/Edição e Histórico
-import 'nutricionista_nova_avaliacao.dart'; 
+// Telas de Edição (Formulários)
+import 'nutricionista_antropometria_screen.dart'; // Agora é a tela de Formulário
 import 'nutricionista_editor_plano_screen.dart';
-import 'nutricionista_antropometria_screen.dart'; // Tela de histórico Antropometria
-import 'nutricionista_historico_planos_screen.dart'; // Tela de histórico Planos
-import '../../classes/paciente.dart'; // Para passar objeto paciente se necessário
 
 class NutricionistaPerfilPacienteScreen extends StatefulWidget {
   final String pacienteId;
@@ -35,199 +31,167 @@ class _NutricionistaPerfilPacienteScreenState
   final _planoRepo = PlanoAlimentarRepository();
 
   bool _isLoading = true;
-  int _tabSelecionada = 0; // 0 = Antropometria, 1 = Plano Alimentar
+  int _tabSelecionada = 0; // 0 = Antropometria, 1 = Planos
 
-  // Dados do Paciente
+  // Dados
   Map<String, dynamic> _dadosPaciente = {};
   int _idade = 0;
-
-  // Dados Antropometria
-  Antropometria? _ultimaAvaliacao;
   List<Antropometria> _historicoAntro = [];
+  List<PlanoAlimentar> _historicoPlanos = [];
 
-  // Dados Plano Alimentar
-  PlanoAlimentar? _ultimoPlano;
+  // Cor Dinâmica
+  Color get _corAtiva => _tabSelecionada == 0 ? AppColors.roxo : AppColors.verde;
 
   @override
   void initState() {
     super.initState();
-    _carregarDadosCompletos();
+    _carregarDados();
   }
 
-  Future<void> _carregarDadosCompletos() async {
+  Future<void> _carregarDados() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Dados do Usuário
-      final userSnap = await FirebaseDatabase.instance
-          .ref('usuarios/${widget.pacienteId}')
-          .get();
-      
+      // 1. Paciente
+      final userSnap = await FirebaseDatabase.instance.ref('usuarios/${widget.pacienteId}').get();
       if (userSnap.exists) {
         _dadosPaciente = Map<String, dynamic>.from(userSnap.value as Map);
         _calcularIdade(_dadosPaciente['dataNascimento']);
       }
 
-      // 2. Dados Antropometria
+      // 2. Antropometria (Busca histórico completo)
       final listaAntro = await _antroRepo.buscarHistorico(widget.pacienteId);
-      // Ordena: mais recente primeiro para pegar a última
+      // Ordena: Mais recente primeiro
       listaAntro.sort((a, b) => (b.data ?? DateTime(2000)).compareTo(a.data ?? DateTime(2000)));
-      
-      // Para o gráfico, precisamos da ordem cronológica (mais antigo primeiro)
-      _historicoAntro = List.from(listaAntro.reversed); 
-      _ultimaAvaliacao = listaAntro.isNotEmpty ? listaAntro.first : null;
+      _historicoAntro = listaAntro;
 
-      // 3. Dados Plano Alimentar
+      // 3. Planos
       final listaPlanos = await _planoRepo.listarPlanos(widget.pacienteId);
-      // O repositório já deve retornar ordenado, mas garantindo pegar o primeiro (mais atual)
-      if (listaPlanos.isNotEmpty) {
-        _ultimoPlano = listaPlanos.first;
-      } else {
-        _ultimoPlano = null;
-      }
+      // Ordena: Mais recente primeiro
+      listaPlanos.sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
+      _historicoPlanos = listaPlanos;
 
     } catch (e) {
-      debugPrint("Erro ao carregar perfil: $e");
+      debugPrint("Erro: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _calcularIdade(String? dataNasc) {
-    if (dataNasc == null) return;
+    if (dataNasc == null || dataNasc.isEmpty) return;
     try {
-      // Tenta formato dd/MM/yyyy
-      final parts = dataNasc.split('/');
+      final parts = dataNasc.split('/'); // formato dd/MM/yyyy
       if (parts.length == 3) {
-        final dt = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        final dia = int.parse(parts[0]);
+        final mes = int.parse(parts[1]);
+        final ano = int.parse(parts[2]);
+        
+        final dtNasc = DateTime(ano, mes, dia);
         final hoje = DateTime.now();
-        int idade = hoje.year - dt.year;
-        if (hoje.month < dt.month || (hoje.month == dt.month && hoje.day < dt.day)) {
+        
+        int idade = hoje.year - dtNasc.year;
+        if (hoje.month < dtNasc.month || (hoje.month == dtNasc.month && hoje.day < dtNasc.day)) {
           idade--;
         }
-        _idade = idade;
+        setState(() => _idade = idade);
       }
     } catch (_) {}
   }
 
-  // --- AÇÕES DO FAB (Botão Flutuante) ---
-  void _acaoBotaoFlutuante() {
+  // --- NAVEGAÇÃO ---
+
+  // Botão Flutuante (Criar Novo)
+  void _acaoFAB() {
     if (_tabSelecionada == 0) {
-      // Criar Nova Avaliação
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NovaAvaliacaoScreen(pacienteId: widget.pacienteId),
-        ),
-      ).then((_) => _carregarDadosCompletos());
+      // Criar Antropometria -> Vai para NutricionistaAntropometriaScreen (Formulário)
+      Navigator.push(context, MaterialPageRoute(
+        // Aqui assumo que você vai adaptar a NutricionistaAntropometriaScreen para receber null e criar
+        // ou você pode manter a lógica de lista lá, mas o pedido foi usar ela para criar/editar.
+        builder: (context) => NutricionistaAntropometriaScreen(pacienteId: widget.pacienteId), 
+      )).then((_) => _carregarDados());
     } else {
-      // Criar Novo Plano
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NutricionistaEditorPlanoScreen(
-            pacienteId: widget.pacienteId,
-            plano: null, // Null = Criar novo
-          ),
-        ),
-      ).then((_) => _carregarDadosCompletos());
+      // Criar Plano
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => NutricionistaEditorPlanoScreen(pacienteId: widget.pacienteId, plano: null),
+      )).then((_) => _carregarDados());
     }
   }
 
-  // --- NAVEGAÇÃO PARA HISTÓRICO/EDIÇÃO ---
-  void _abrirGerenciamentoHistorico() {
-    // Cria objeto paciente auxiliar apenas com ID e Nome para passar para as telas
-    final pacienteObj = Paciente(
-      id: widget.pacienteId,
-      nome: _dadosPaciente['nome'] ?? 'Paciente', 
-      email: '', senha: '', codigo: '', dataNascimento: '',
-    );
+  // Editar / Visualizar Antropometria
+  void _navegarAntropometria(Antropometria? item) {
+    // Se precisar passar o item para edição, certifique-se que NutricionistaAntropometriaScreen aceita
+    // Caso contrário, se ela for apenas uma lista, essa navegação levará para a lista.
+    // Mas conforme seu pedido: "editar_antropometria seja A TELA de editar e CRIAR".
+    Navigator.push(context, MaterialPageRoute(
+      builder: (context) => NutricionistaAntropometriaScreen(pacienteId: widget.pacienteId),
+    )).then((_) => _carregarDados());
+  }
 
-    if (_tabSelecionada == 0) {
-      // Tela de Lista de Antropometria (onde tem editar/excluir)
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NutricionistaAntropometriaScreen(pacienteId: widget.pacienteId),
-        ),
-      ).then((_) => _carregarDadosCompletos());
-    } else {
-      // Tela de Histórico de Planos (onde tem editar/excluir)
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => NutricionistaHistoricoPlanosScreen(paciente: pacienteObj),
-        ),
-      ).then((_) => _carregarDadosCompletos());
-    }
+  void _excluirAntropometria(String id) async {
+    await _antroRepo.excluirAvaliacao(widget.pacienteId, id);
+    _carregarDados();
+  }
+
+  // Editar / Visualizar Plano
+  void _navegarPlano(PlanoAlimentar item) {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (context) => NutricionistaEditorPlanoScreen(pacienteId: widget.pacienteId, plano: item),
+    )).then((_) => _carregarDados());
+  }
+
+  void _excluirPlano(String id) async {
+    await _planoRepo.excluirPlano(widget.pacienteId, id);
+    _carregarDados();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.roxo,
+      backgroundColor: _corAtiva,
       appBar: AppBar(
-        title: const Text("Perfil do Paciente", style: TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.roxo,
+        title: const Text("Perfil do Paciente", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: _corAtiva,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _acaoBotaoFlutuante,
-        backgroundColor: AppColors.laranja,
-        icon: const Icon(Icons.add, color: Colors.white),
+        onPressed: _acaoFAB,
+        backgroundColor: Colors.white,
+        foregroundColor: _corAtiva,
+        icon: Icon(_tabSelecionada == 0 ? Icons.add : Icons.add_circle_outline),
         label: Text(
           _tabSelecionada == 0 ? "Nova Avaliação" : "Novo Plano",
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Column(
               children: [
-                // 1. CARD DE CABEÇALHO (Informações do Paciente)
+                // 1. CABEÇALHO (Dados do Paciente)
                 _buildHeaderPaciente(),
 
-                // 2. ABAS (Selector)
-                _buildTabSelector(),
+                // 2. SELETOR DE ABAS
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.2), borderRadius: BorderRadius.circular(25)),
+                  child: Row(children: [_buildTabItem(0, "Antropometria"), _buildTabItem(1, "Planos")]),
+                ),
 
-                // 3. CONTEÚDO (Antropometria ou Plano)
+                // 3. CONTEÚDO (Container Branco)
                 Expanded(
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
                     ),
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.only(bottom: 80),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Botão de Histórico no topo do conteúdo
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: _abrirGerenciamentoHistorico,
-                              icon: const Icon(Icons.history, size: 18),
-                              label: const Text("Gerenciar Histórico Completo"),
-                              style: TextButton.styleFrom(foregroundColor: AppColors.roxo),
-                            ),
-                          ),
-                          const Divider(),
-                          const SizedBox(height: 10),
-
-                          // Conteúdo Dinâmico
-                          _tabSelecionada == 0
-                              ? _buildConteudoAntropometria()
-                              : _buildConteudoPlanoAlimentar(),
-                        ],
-                      ),
-                    ),
+                    child: _tabSelecionada == 0
+                        ? _buildAbaAntropometria()
+                        : _buildAbaPlanos(),
                   ),
                 ),
               ],
@@ -247,7 +211,7 @@ class _NutricionistaPerfilPacienteScreenState
             backgroundColor: Colors.white.withOpacity(0.2),
             child: Text(
               _dadosPaciente['nome']?.toString().substring(0, 1).toUpperCase() ?? 'P',
-              style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 26, color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 15),
@@ -255,13 +219,21 @@ class _NutricionistaPerfilPacienteScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _dadosPaciente['nome'] ?? 'Nome Indisponível',
+                _dadosPaciente['nome'] ?? 'Nome não informado',
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              Text(
-                "$_idade anos • ${_dadosPaciente['genero'] ?? 'Gênero n/a'}",
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
-              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.cake, color: Colors.white70, size: 14),
+                  const SizedBox(width: 4),
+                  Text("$_idade anos", style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.person, color: Colors.white70, size: 14),
+                  const SizedBox(width: 4),
+                  Text(_dadosPaciente['genero'] ?? 'N/A', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                ],
+              )
             ],
           )
         ],
@@ -269,25 +241,11 @@ class _NutricionistaPerfilPacienteScreenState
     );
   }
 
-  Widget _buildTabSelector() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        children: [
-          _buildTabButton("Antropometria", 0),
-          _buildTabButton("Plano Alimentar", 1),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabButton(String text, int index) {
+  Widget _buildTabItem(int index, String label) {
     bool isSelected = _tabSelecionada == index;
+    // Ícone Pessoa para Antropometria, Garfo/Faca para Planos
+    IconData icon = index == 0 ? Icons.accessibility_new : Icons.restaurant_menu;
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _tabSelecionada = index),
@@ -298,105 +256,188 @@ class _NutricionistaPerfilPacienteScreenState
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(25),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isSelected ? AppColors.roxo : Colors.white.withOpacity(0.7),
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: isSelected ? _corAtiva : Colors.white.withOpacity(0.7)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? _corAtiva : Colors.white.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // --- CONTEÚDO DA ANTROPOMETRIA ---
-  Widget _buildConteudoAntropometria() {
-    if (_ultimaAvaliacao == null) {
-      return _buildEmptyState("Nenhuma avaliação cadastrada.", Icons.monitor_weight_outlined);
-    }
+  // --- ABA ANTROPOMETRIA ---
+  Widget _buildAbaAntropometria() {
+    if (_historicoAntro.isEmpty) return _buildEmpty("Nenhuma avaliação cadastrada.");
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Última Avaliação: ${_formatDate(_ultimaAvaliacao!.data)}",
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.roxo),
-        ),
-        const SizedBox(height: 15),
-        
-        // Barras de Progresso (Visual do Paciente)
-        _buildIndicadorBarra('Massa Corporal Total', _ultimaAvaliacao!.massaCorporal, 'kg', _ultimaAvaliacao!.classMassaCorporal, maxVal: 150),
-        _buildIndicadorBarra('Massa de Gordura', _ultimaAvaliacao!.massaGordura, 'kg', _ultimaAvaliacao!.classMassaGordura, maxVal: 50),
-        _buildIndicadorBarra('% de Gordura', _ultimaAvaliacao!.percentualGordura, '%', _ultimaAvaliacao!.classPercentualGordura, maxVal: 50),
-        _buildIndicadorBarra('IMC', _ultimaAvaliacao!.imc, '', _ultimaAvaliacao!.classImc, maxVal: 50),
-        
-        const SizedBox(height: 30),
-        
-        // Gráfico de Evolução (Se houver histórico)
-        if (_historicoAntro.length > 1) ...[
-          const Text("Evolução do Peso", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.roxo)),
+    final atual = _historicoAntro.first;
+    final historico = _historicoAntro.length > 1 ? _historicoAntro.sublist(1) : <Antropometria>[];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 80),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Última Avaliação Física", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.roxo)),
+          const SizedBox(height: 16),
+          
+          // DASHBOARD (Barras de Progresso) - Estilo do Paciente
+          if (atual != null) ...[
+            _buildIndicadorBarra('Massa Corporal Total', atual.massaCorporal, 'kg', atual.classMassaCorporal, maxVal: 150),
+            _buildIndicadorBarra('Massa de Gordura', atual.massaGordura, 'kg', atual.classMassaGordura, maxVal: 50),
+            _buildIndicadorBarra('Percentual de Gordura', atual.percentualGordura, '%', atual.classPercentualGordura, maxVal: 50),
+            _buildIndicadorBarra('IMC', atual.imc, '', atual.classImc, maxVal: 50),
+            _buildIndicadorBarra('CMB (Braço)', atual.cmb, ' cm', atual.classCmb, maxVal: 60),
+            _buildIndicadorBarra('Relação C/Q', atual.relacaoCinturaQuadril, '', atual.classRcq, maxVal: 1.2),
+          ],
+
+          const SizedBox(height: 30),
+          const Divider(),
           const SizedBox(height: 10),
-          _buildGraficoPeso(),
-        ]
-      ],
+
+          // HISTÓRICO (Estilo Card Branco Igual Planos)
+          if (historico.isNotEmpty) ...[
+            const Text("Histórico", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 10),
+            ...historico.map((item) => _buildCardHistorico(
+              titulo: "Avaliação de ${_formatDate(item.data)}",
+              subtitulo: "${item.massaCorporal} kg • IMC ${item.imc}",
+              icone: Icons.accessibility_new,
+              corTema: AppColors.roxo,
+              onTap: () => _navegarAntropometria(item),
+              onEdit: () => _navegarAntropometria(item),
+              onDelete: () => _excluirAntropometria(item.id_avaliacao!),
+            )),
+          ]
+        ],
+      ),
     );
   }
 
-  // --- CONTEÚDO DO PLANO ALIMENTAR ---
-  Widget _buildConteudoPlanoAlimentar() {
-    if (_ultimoPlano == null) {
-      return _buildEmptyState("Nenhum plano alimentar ativo.", Icons.restaurant_menu);
-    }
+  // --- ABA PLANOS ---
+  Widget _buildAbaPlanos() {
+    if (_historicoPlanos.isEmpty) return _buildEmpty("Nenhum plano alimentar.");
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final atual = _historicoPlanos.first;
+    final historico = _historicoPlanos.length > 1 ? _historicoPlanos.sublist(1) : <PlanoAlimentar>[];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 80),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Plano Ativo", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.verde)),
+          const SizedBox(height: 10),
+          
+          // CARD DO PLANO ATUAL (Usando mesmo estilo do histórico mas destacado)
+          _buildCardHistorico(
+            titulo: atual.nome,
+            subtitulo: "Criado em ${_formatDate(atual.dataCriacao)}",
+            icone: Icons.restaurant_menu,
+            corTema: AppColors.verde,
+            isAtual: true,
+            onTap: () => _navegarPlano(atual),
+            onEdit: () => _navegarPlano(atual),
+            onDelete: () => _excluirPlano(atual.id),
+          ),
+
+          const SizedBox(height: 25),
+          const Divider(),
+          const SizedBox(height: 10),
+
+          // HISTÓRICO
+          if (historico.isNotEmpty) ...[
+            const Text("Histórico", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 10),
+            ...historico.map((item) => _buildCardHistorico(
+              titulo: item.nome,
+              subtitulo: "Criado em ${_formatDate(item.dataCriacao)}",
+              icone: Icons.restaurant_menu,
+              corTema: AppColors.verde,
+              onTap: () => _navegarPlano(item),
+              onEdit: () => _navegarPlano(item),
+              onDelete: () => _excluirPlano(item.id),
+            )),
+          ]
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGETS AUXILIARES ---
+
+  // CARD DE HISTÓRICO (Genérico para ambas as abas)
+  Widget _buildCardHistorico({
+    required String titulo,
+    required String subtitulo,
+    required IconData icone,
+    required Color corTema,
+    required VoidCallback onTap,
+    required VoidCallback onEdit,
+    required VoidCallback onDelete,
+    bool isAtual = false,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: isAtual ? 4 : 1,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isAtual ? BorderSide(color: corTema, width: 2) : BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        onTap: onTap,
+        leading: CircleAvatar(
+          backgroundColor: isAtual ? corTema : Colors.grey[200],
+          child: Icon(icone, color: isAtual ? Colors.white : Colors.grey, size: 20),
+        ),
+        title: Text(titulo, style: TextStyle(fontWeight: FontWeight.bold, color: isAtual ? Colors.black : Colors.grey[800])),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Plano Atual: ${_ultimoPlano!.nome}",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.roxo),
-            ),
-            Text(
-              _formatDate(_ultimoPlano!.dataCriacao),
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
+            Text(subtitulo),
+            if (isAtual)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text("ATUAL", style: TextStyle(color: corTema, fontSize: 10, fontWeight: FontWeight.bold)),
+              )
           ],
         ),
-        const SizedBox(height: 20),
-        
-        if (_ultimoPlano!.refeicoes.isEmpty)
-          const Text("Este plano não possui refeições.", style: TextStyle(color: Colors.grey))
-        else
-          ..._ultimoPlano!.refeicoes.map((r) => _buildRefeicaoCardStyle(r)),
-      ],
-    );
-  }
-
-  // --- COMPONENTES VISUAIS REUTILIZADOS ---
-
-  Widget _buildEmptyState(String msg, IconData icon) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          children: [
-            Icon(icon, size: 50, color: Colors.grey[300]),
-            const SizedBox(height: 10),
-            Text(msg, style: TextStyle(color: Colors.grey[500])),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Colors.grey),
+          onSelected: (v) {
+            if (v == 'edit') onEdit();
+            if (v == 'del') onDelete();
+          },
+          itemBuilder: (ctx) => [
+            const PopupMenuItem(value: 'edit', child: Text("Editar")),
+            const PopupMenuItem(value: 'del', child: Text("Excluir", style: TextStyle(color: Colors.red))),
           ],
         ),
       ),
     );
   }
 
+  // BARRA DE PROGRESSO (Estilo Paciente)
   Widget _buildIndicadorBarra(String label, double? valor, String unidade, String? classificacao, {double maxVal = 100.0}) {
-    Color cor = const Color(0xFF4CAF50); // Verde (Ideal)
-    if (classificacao?.contains('Abaixo') ?? false) cor = const Color(0xFF5E6EE6); // Azul
-    if (classificacao?.contains('Acima') ?? false) cor = const Color(0xFFFF7043); // Laranja
+    Color cor;
+    if (classificacao == 'Abaixo') {
+      cor = const Color(0xFF5E6EE6); // Azul
+    } else if (classificacao == 'Acima') {
+      cor = const Color(0xFFFF7043); // Laranja
+    } else {
+      cor = const Color(0xFF4CAF50); // Verde
+    }
 
     double v = valor ?? 0;
     double percent = (v / maxVal).clamp(0.0, 1.0);
@@ -408,8 +449,8 @@ class _NutricionistaPerfilPacienteScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
-              Text('${v.toStringAsFixed(1)}$unidade', style: TextStyle(fontWeight: FontWeight.bold, color: cor, fontSize: 13)),
+              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              Text('${v.toStringAsFixed(1)}$unidade', style: TextStyle(fontWeight: FontWeight.bold, color: cor, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 6),
@@ -417,8 +458,8 @@ class _NutricionistaPerfilPacienteScreenState
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: percent,
-              minHeight: 8,
-              backgroundColor: Colors.grey[100],
+              minHeight: 10,
+              backgroundColor: Colors.grey[200],
               valueColor: AlwaysStoppedAnimation<Color>(cor),
             ),
           ),
@@ -427,115 +468,15 @@ class _NutricionistaPerfilPacienteScreenState
     );
   }
 
-  Widget _buildRefeicaoCardStyle(Refeicao refeicao) {
-    double cal = refeicao.totalCalorias;
-    double prot = refeicao.totalProteinas;
-    double carb = refeicao.totalCarboidratos;
-    double gord = refeicao.totalGorduras;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 2, blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: AppColors.verde.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.restaurant, color: AppColors.verde),
-          ),
-          title: Text(refeicao.nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          subtitle: Text('${refeicao.horario} • ${cal.toStringAsFixed(0)} kcal', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-          children: [
-            Container(
-              color: Colors.grey[50],
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildMacroBadge("Carb", "${carb.toStringAsFixed(1)}g", Colors.orange),
-                      _buildMacroBadge("Prot", "${prot.toStringAsFixed(1)}g", Colors.blue),
-                      _buildMacroBadge("Gord", "${gord.toStringAsFixed(1)}g", Colors.red),
-                    ],
-                  ),
-                  const Divider(height: 20),
-                  ...refeicao.alimentos.map((alimento) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    title: Text(alimento.nome, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text("${alimento.calorias} kcal / 100g"),
-                    trailing: Text("${alimento.quantidade.toStringAsFixed(0)}g", style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.verde)),
-                  )),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMacroBadge(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-      child: Row(
+  Widget _buildEmpty(String msg) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text("$label: $value", style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+          Icon(Icons.info_outline, size: 40, color: Colors.grey[300]),
+          const SizedBox(height: 10),
+          Text(msg, style: TextStyle(color: Colors.grey[500])),
         ],
-      ),
-    );
-  }
-
-  Widget _buildGraficoPeso() {
-    List<FlSpot> spots = [];
-    double minW = 200, maxW = 0;
-    
-    for (int i = 0; i < _historicoAntro.length; i++) {
-      double w = _historicoAntro[i].massaCorporal ?? 0;
-      if (w > maxW) maxW = w;
-      if (w < minW && w > 0) minW = w;
-      spots.add(FlSpot(i.toDouble(), w));
-    }
-    
-    if (spots.isEmpty) return const SizedBox();
-
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
-      child: LineChart(
-        LineChartData(
-          minY: minW - 5, maxY: maxW + 5,
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10)))),
-            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          gridData: FlGridData(show: true, drawVerticalLine: false),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots, isCurved: true, color: AppColors.roxo, barWidth: 3,
-              dotData: FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: AppColors.roxo.withOpacity(0.1)),
-            )
-          ],
-        ),
       ),
     );
   }

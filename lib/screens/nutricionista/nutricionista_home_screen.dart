@@ -10,7 +10,7 @@ import '../../classes/paciente.dart';
 import 'nutricionista_antropometria_screen.dart';
 import '../../database/antropometria_repository.dart';
 import '../../database/plano_alimentar_repository.dart';
-import '../../classes/planoalimentar.dart';
+import '../../classes/plano_alimentar.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class NutricionistaHomeScreen extends StatefulWidget {

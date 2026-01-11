@@ -11,7 +11,7 @@ import '../../classes/paciente.dart';
 import '../../classes/refeicao.dart';
 import '../../classes/nutricionista.dart';
 import '../../database/nutricionista_repository.dart';
-import '../../classes/planoalimentar.dart';
+import '../../classes/plano_alimentar.dart';
 
 class HomeTabScreen extends StatefulWidget {
   final String pacienteId;

@@ -1,4 +1,4 @@
-import 'package:app/classes/planoalimentar.dart';
+import 'package:app/classes/plano_alimentar.dart';
 import 'package:app/database/taco_db.dart';
 import 'package:flutter/material.dart';
 import '../../classes/refeicao.dart';

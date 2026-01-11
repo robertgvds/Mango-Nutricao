@@ -1,4 +1,4 @@
-import 'package:app/classes/planoalimentar.dart';
+import 'package:app/classes/plano_alimentar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';

@@ -1,4 +1,4 @@
-import 'package:app/classes/planoalimentar.dart';
+import 'package:app/classes/plano_alimentar.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class PlanoAlimentarRepository {

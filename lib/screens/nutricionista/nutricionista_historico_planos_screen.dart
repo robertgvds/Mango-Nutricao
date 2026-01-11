@@ -1,4 +1,4 @@
-import 'package:app/classes/planoalimentar.dart';
+import 'package:app/classes/plano_alimentar.dart';
 import 'package:app/widgets/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../classes/paciente.dart';
