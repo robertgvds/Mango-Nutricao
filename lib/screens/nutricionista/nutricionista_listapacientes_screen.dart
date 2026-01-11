@@ -1,12 +1,10 @@
+import 'package:app/screens/nutricionista/nutricionista_perfil_paciente_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart'; // Import do Realtime DB
 import 'package:app/widgets/app_colors.dart';
 import 'package:app/services/auth_service.dart';
 import 'package:provider/provider.dart';
-
-// Importante: certifique-se que o caminho está correto
-import 'nutricionista_antropometria_screen.dart';
 
 class NutricionistaListaPacientesScreen extends StatefulWidget {
   const NutricionistaListaPacientesScreen({super.key});
@@ -25,13 +23,11 @@ class _NutricionistaListaPacientesScreenState
   String _filtroBusca = "";
 
   // Função para navegar
-  void _navegarParaRelatorio(String idPaciente) {
+  void _navegarParaPerfil(String idPaciente) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) =>
-                NutricionistaAntropometriaScreen(pacienteId: idPaciente),
+        builder: (context) => NutricionistaPerfilPacienteScreen(pacienteId: idPaciente),
       ),
     );
   }
@@ -61,11 +57,6 @@ class _NutricionistaListaPacientesScreenState
             onPressed: () => context.read<AuthService>().logout(),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pop(context),
-        backgroundColor: AppColors.roxo,
-        child: const Icon(Icons.arrow_back, color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -253,9 +244,9 @@ class _NutricionistaListaPacientesScreenState
                             ),
                             tooltip: "Ver Avaliação",
                             onPressed:
-                                () => _navegarParaRelatorio(paciente['id']),
+                                () => _navegarParaPerfil(paciente['id']),
                           ),
-                          onTap: () => _navegarParaRelatorio(paciente['id']),
+                          onTap: () => _navegarParaPerfil(paciente['id']),
                         ),
                       );
                     },
