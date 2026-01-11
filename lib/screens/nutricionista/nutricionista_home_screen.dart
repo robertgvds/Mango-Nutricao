@@ -167,7 +167,7 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
     }
   }
 
-  // --- MÉTODO DE TESTE ---
+  // --- MÉTODO DE NAVEGAÇÃO ---
   // Busca o paciente pelo ID e abre a tela de Plano Alimentar
   Future<void> _abrirTestePlanoAlimentar(String pacienteId) async {
     // Mostra loading rápido
@@ -220,17 +220,7 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.laranja,
 
-      // --- BOTÃO DE TESTE ATUALIZADO ---
-      /* floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.laranja,
-        icon: const Icon(Icons.restaurant_menu), // Ícone de comida
-        label: const Text("Testar Plano Alimentar"),
-        onPressed: () {
-          // Busca o paciente e abre a tela de DIETA
-          _abrirTestePlanoAlimentar("uGFqVcMBdNVRQzaWs0cnmlSlBmw2");
-        },
-      ), */
+      // Botão flutuante removido conforme solicitado
       appBar: AppBar(
         backgroundColor: AppColors.laranja,
         elevation: 0,
@@ -303,15 +293,6 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
                       "Sem planos a pendentes!",
                       AppColors.verdeEscuro,
                     ),
-
-                  /*const Divider(),
-
-                   _buildSecaoTitulo(
-                    "-TESTE- Pacientes (${_meusPacientes.length})",
-                    AppColors.laranja,
-                  ),
-
-                  ..._meusPacientes.map((p) => _cardPacienteGeral(p)), */
                 ],
               ),
             ),
@@ -477,43 +458,6 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
     ),
   );
 
-  /*  Widget _cardPacienteGeral(Paciente paciente) { //teste
-    final temAvaliacao = paciente.antropometria != null;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      elevation: 0,
-      color: Colors.grey[50],
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor:
-              temAvaliacao ? Colors.green[100] : Colors.orange[100],
-          child: Icon(
-            Icons.person,
-            color: temAvaliacao ? Colors.green : Colors.orange,
-          ),
-        ),
-        title: Text(
-          paciente.nome,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          temAvaliacao
-              ? "Última avaliação: ${paciente.antropometria!.data!.day}/${paciente.antropometria!.data!.month}"
-              : "Nenhuma avaliação registrada",
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // Navega para o histórico ou perfil do paciente
-          _abrirTestePlanoAlimentar(paciente.id!);
-        },
-      ),
-    );
-  }
- */
   Widget _cardPlanoPendente(Paciente paciente) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),

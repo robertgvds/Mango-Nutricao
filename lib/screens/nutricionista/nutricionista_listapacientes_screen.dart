@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart'; // Import do Realtime DB
+import 'package:firebase_database/firebase_database.dart';
 import 'package:app/widgets/app_colors.dart';
 import 'package:app/services/auth_service.dart';
 import 'package:provider/provider.dart';
 
-// Importante: certifique-se que o caminho está correto
 import 'nutricionista_detalhes_paciente_screen.dart';
 
 class NutricionistaListaPacientesScreen extends StatefulWidget {
@@ -62,11 +61,7 @@ class _NutricionistaListaPacientesScreenState
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pop(context),
-        backgroundColor: AppColors.roxo,
-        child: const Icon(Icons.arrow_back, color: Colors.white),
-      ),
+      // Botão Flutuante REMOVIDO aqui
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
