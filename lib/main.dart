@@ -1,7 +1,6 @@
 // arquivo: main.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
@@ -16,12 +15,6 @@ void main() async {
 
   // ATIVA O CACHE LOCAL (Torna o app instantâneo)
   FirebaseDatabase.instance.setPersistenceEnabled(true);
-
-  // 2. Inicializa o driver para Windows/Linux/macOS
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
 
   runApp(
     ChangeNotifierProvider(

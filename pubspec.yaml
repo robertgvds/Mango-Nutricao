@@ -31,10 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # --- Banco de Dados Local (SQLite) ---
-  sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.0 # Útil para Desktop (Windows/Linux) ou testes
-  path: ^1.9.0
+  # --- Geração de PDFs ---
+  pdf: ^3.10.0
+  printing: ^5.11.0
 
   # --- Firebase (Backend) ---
   firebase_core: ^3.6.0
