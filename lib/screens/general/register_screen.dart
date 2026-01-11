@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import 'verification_screen.dart';
 import '../../widgets/app_colors.dart';
-import '../../widgets/app_styles.dart'; // [IMPORTANTE] Importe seus estilos
+import '../../widgets/app_styles.dart';
 
 enum UserType { paciente, nutricionista }
 
@@ -28,15 +28,19 @@ class RegisterScreenState extends State<RegisterScreen> {
   final _senhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
 
-  final maskFormatter = MaskTextInputFormatter(
+  final maskData = MaskTextInputFormatter(
     mask: '##/##/####',
     filter: {"#": RegExp(r'[0-9]')},
     type: MaskAutoCompletionType.lazy,
   );
 
+  // Se o CRN tiver um formato fixo (ex: 12345), usamos apenas digitsOnly.
+  // Se quiser uma máscara específica (ex: UF-12345), pode criar outro MaskTextInputFormatter.
+
   bool _senhasNaoCoincidem = false;
   bool _formularioCompleto = false;
   String? _erroRequisitoSenha;
+  String? _erroCrn; // Novo erro específico para CRN
 
   @override
   void initState() {
@@ -55,11 +59,12 @@ class RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // --- VALIDAÇÕES (Mantidas iguais) ---
+  // --- VALIDAÇÕES ---
   String? _validarRequisitosSenha(String senha) {
     if (senha.isEmpty) return null;
     if (senha.length < 8) return "Mínimo 8 caracteres";
     if (!RegExp(r'[A-Z]').hasMatch(senha)) return "Falta letra maiúscula";
+    if (!RegExp(r'[a-z]').hasMatch(senha)) return "Falta letra minúscula";
     if (!RegExp(r'[0-9]').hasMatch(senha)) return "Falta número";
     if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(senha)) return "Falta caractere especial";
     return null;
@@ -75,6 +80,14 @@ class RegisterScreenState extends State<RegisterScreen> {
     } catch (e) { return "Data inválida"; }
   }
 
+  String? _validarCrn(String crn) {
+    if (_selectedUser == UserType.paciente) return null;
+    if (crn.isEmpty) return null; // Campo vazio ainda não é erro, só incompleto
+    // Regra: Apenas números e tamanho mínimo razoável (ex: 4 dígitos)
+    if (crn.length < 4) return "CRN muito curto";
+    return null;
+  }
+
   void _atualizarEstadoFormulario() {
     final senha = _senhaController.text;
     final confirmar = _confirmarSenhaController.text;
@@ -82,11 +95,18 @@ class RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       _erroRequisitoSenha = _validarRequisitosSenha(senha);
       _senhasNaoCoincidem = senha.isNotEmpty && confirmar.isNotEmpty && senha != confirmar;
+      _erroCrn = _validarCrn(_crnController.text);
 
-      final basicos = _nomeController.text.isNotEmpty && _dataNascController.text.length == 10 && _emailController.text.contains('@') && senha.isNotEmpty && confirmar.isNotEmpty;
-      final crn = (_selectedUser == UserType.paciente) || _crnController.text.isNotEmpty;
+      final basicos = _nomeController.text.isNotEmpty && 
+                      _dataNascController.text.length == 10 && 
+                      _emailController.text.contains('@') && 
+                      senha.isNotEmpty && 
+                      confirmar.isNotEmpty;
       
-      _formularioCompleto = basicos && crn && _erroRequisitoSenha == null && _validarDataNascimento(_dataNascController.text) == null;
+      // Validação Específica do CRN
+      final crnValido = _selectedUser == UserType.paciente || (_crnController.text.isNotEmpty && _erroCrn == null);
+      
+      _formularioCompleto = basicos && crnValido && _erroRequisitoSenha == null && !_senhasNaoCoincidem && _validarDataNascimento(_dataNascController.text) == null;
     });
   }
 
@@ -129,13 +149,13 @@ class RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SELETOR DE TIPO (Paciente / Nutri)
+            // SELETOR DE TIPO
             Container(
               width: double.infinity,
               height: 50,
               decoration: BoxDecoration(
                 color: AppColors.cinzaClaro,
-                borderRadius: AppStyles.borderButton, // 16.0
+                borderRadius: AppStyles.borderButton,
               ),
               child: Row(
                 children: [
@@ -150,15 +170,22 @@ class RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 10),
             
             _buildTextField("Nome Completo", _nomeController, Icons.person),
-            _buildTextField("Data de Nascimento", _dataNascController, Icons.calendar_today, formatters: [maskFormatter], type: TextInputType.number),
+            _buildTextField("Data de Nascimento", _dataNascController, Icons.calendar_today, formatters: [maskData], type: TextInputType.number),
             if (_dataNascController.text.length == 10) _buildErrorMsg(_validarDataNascimento(_dataNascController.text)),
 
+            // CAMPO CRN COM VALIDAÇÃO
             if (_selectedUser == UserType.nutricionista) ...[
-              _buildTextField("CRN", _crnController, Icons.badge),
+              _buildTextField(
+                "CRN (somente números)", 
+                _crnController, 
+                Icons.badge,
+                type: TextInputType.number, 
+                formatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)] // Aceita só números, max 10
+              ),
+              if (_erroCrn != null) _buildErrorMsg(_erroCrn),
             ],
 
             const SizedBox(height: 10),
-            // SELETOR GÊNERO
             const Text("Gênero", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
@@ -192,7 +219,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                   backgroundColor: AppColors.roxo,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
-                  shape: AppStyles.shapeButton, // 16.0
+                  shape: AppStyles.shapeButton,
                   elevation: 0,
                 ),
                 child: _estaCarregando 
@@ -217,7 +244,7 @@ class RegisterScreenState extends State<RegisterScreen> {
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12), // Um pouco menos que o container pai
+            borderRadius: BorderRadius.circular(12),
             boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
           ),
           alignment: Alignment.center,
@@ -240,7 +267,7 @@ class RegisterScreenState extends State<RegisterScreen> {
       labelStyle: TextStyle(color: selected ? AppColors.roxo : Colors.grey[700], fontWeight: FontWeight.bold),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20), // Chips geralmente são mais redondos
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: selected ? AppColors.roxo : Colors.grey[300]!)
       ),
     );
@@ -260,7 +287,7 @@ class RegisterScreenState extends State<RegisterScreen> {
           hintText: hint,
           filled: true,
           fillColor: AppColors.cinzaClaro,
-          border: OutlineInputBorder(borderRadius: AppStyles.borderButton, borderSide: BorderSide.none), // 16.0
+          border: OutlineInputBorder(borderRadius: AppStyles.borderButton, borderSide: BorderSide.none),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),

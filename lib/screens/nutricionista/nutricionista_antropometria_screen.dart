@@ -36,7 +36,7 @@ class _NutricionistaAntropometriaScreenState
   final _obsCtrl = TextEditingController();
   final _massaCorporalCtrl = TextEditingController();
   final _massaGorduraCtrl = TextEditingController();
-  final _massaMuscularCtrl = TextEditingController(); // [NOVO]
+  final _massaMuscularCtrl = TextEditingController();
   final _percentualGorduraCtrl = TextEditingController();
   final _imcCtrl = TextEditingController();
   final _cmbCtrl = TextEditingController();
@@ -44,7 +44,7 @@ class _NutricionistaAntropometriaScreenState
 
   String _classMassaCorporal = 'Ideal';
   String _classMassaGordura = 'Ideal';
-  String _classMassaMuscular = 'Ideal'; // [NOVO]
+  String _classMassaMuscular = 'Ideal';
   String _classPercentualGordura = 'Ideal';
   String _classImc = 'Ideal';
   String _classCmb = 'Ideal';
@@ -64,7 +64,7 @@ class _NutricionistaAntropometriaScreenState
     _obsCtrl.dispose();
     _massaCorporalCtrl.dispose();
     _massaGorduraCtrl.dispose();
-    _massaMuscularCtrl.dispose(); // [NOVO]
+    _massaMuscularCtrl.dispose();
     _percentualGorduraCtrl.dispose();
     _imcCtrl.dispose();
     _cmbCtrl.dispose();
@@ -125,6 +125,7 @@ class _NutricionistaAntropometriaScreenState
     }
   }
 
+  // --- LÓGICA DE CÁLCULO PARA TODOS OS ÍNDICES ---
   void _calcularSugestaoAutomatica(String tipo, String valorTexto) {
     if (valorTexto.isEmpty) return;
     double? valor = double.tryParse(valorTexto.replaceAll(',', '.'));
@@ -137,25 +138,64 @@ class _NutricionistaAntropometriaScreenState
       case 'IMC':
         if (valor < 18.5) sugestao = 'Abaixo';
         else if (valor >= 25.0) sugestao = 'Acima';
+        else sugestao = 'Ideal';
         setState(() => _classImc = sugestao);
         break;
-      case 'Gordura':
+
+      case 'GorduraPercent': // % Gordura
         double min = isFem ? 18.0 : 10.0;
         double max = isFem ? 28.0 : 20.0;
         if (valor < min) sugestao = 'Abaixo';
         else if (valor > max) sugestao = 'Acima';
         setState(() => _classPercentualGordura = sugestao);
         break;
-      case 'MassaMuscular': // [NOVO] Lógica simplificada, ideal é personalizar
-        // Exemplo genérico: Homens > 40%, Mulheres > 30% como "Ideal/Acima"
-        double ref = isFem ? 30.0 : 40.0; 
-        // Aqui é difícil automatizar sem tabelas complexas, deixando manual por padrão
-        // Mas se quiser sugerir algo:
-        if (valor < ref - 5) sugestao = 'Abaixo';
-        else if (valor > ref + 5) sugestao = 'Acima';
+
+      case 'MassaGorda': // Gordura em Kg (estimativa)
+        // Referência aproximada: Homens 6-18kg, Mulheres 10-25kg (varia muito com altura)
+        double minKg = isFem ? 10.0 : 6.0;
+        double maxKg = isFem ? 25.0 : 18.0;
+        if (valor < minKg) sugestao = 'Abaixo';
+        else if (valor > maxKg) sugestao = 'Acima';
+        setState(() => _classMassaGordura = sugestao);
+        break;
+
+      case 'MassaMuscular': // Massa Muscular em Kg
+        // Referência aproximada para adultos
+        double refMin = isFem ? 20.0 : 30.0; 
+        if (valor < refMin) sugestao = 'Abaixo';
+        else if (valor > refMin + 20) sugestao = 'Acima'; // Muito musculoso
+        else sugestao = 'Ideal';
         setState(() => _classMassaMuscular = sugestao);
         break;
-      // ... outros casos mantidos ...
+
+      case 'RCQ': // Relação Cintura Quadril
+        // Risco alto: Homens > 0.90, Mulheres > 0.85
+        double limite = isFem ? 0.85 : 0.90;
+        double baixo = isFem ? 0.70 : 0.80;
+        if (valor > limite) sugestao = 'Acima'; // Risco
+        else if (valor < baixo) sugestao = 'Abaixo';
+        else sugestao = 'Ideal';
+        setState(() => _classRcq = sugestao);
+        break;
+
+      case 'CMB': // Circunferência Muscular do Braço
+        double minCMB = isFem ? 20.0 : 23.0;
+        double maxCMB = isFem ? 29.0 : 34.0;
+        if (valor < minCMB) sugestao = 'Abaixo';
+        else if (valor > maxCMB) sugestao = 'Acima';
+        setState(() => _classCmb = sugestao);
+        break;
+
+      case 'Peso': // Massa Corporal
+        // Sem altura é difícil definir "Ideal", usamos uma média segura apenas para preencher
+        // O ideal é o Nutricionista ajustar manualmente se necessário
+        double minPeso = isFem ? 45.0 : 55.0;
+        double maxPeso = isFem ? 80.0 : 90.0;
+        if (valor < minPeso) sugestao = 'Abaixo';
+        else if (valor > maxPeso) sugestao = 'Acima';
+        else sugestao = 'Ideal';
+        setState(() => _classMassaCorporal = sugestao);
+        break;
     }
   }
 
@@ -167,16 +207,18 @@ class _NutricionistaAntropometriaScreenState
       id_avaliacao: _idAvaliacaoEmEdicao,
       massaCorporal: double.tryParse(_massaCorporalCtrl.text.replaceAll(',', '.')),
       massaGordura: double.tryParse(_massaGorduraCtrl.text.replaceAll(',', '.')),
-      massaMuscular: double.tryParse(_massaMuscularCtrl.text.replaceAll(',', '.')), // [NOVO]
+      massaMuscular: double.tryParse(_massaMuscularCtrl.text.replaceAll(',', '.')),
       percentualGordura: double.tryParse(_percentualGorduraCtrl.text.replaceAll(',', '.')),
+      massaEsqueletica: null,
       imc: double.tryParse(_imcCtrl.text.replaceAll(',', '.')),
       cmb: double.tryParse(_cmbCtrl.text.replaceAll(',', '.')),
       relacaoCinturaQuadril: double.tryParse(_rcqCtrl.text.replaceAll(',', '.')),
       
       classMassaCorporal: _classMassaCorporal,
       classMassaGordura: _classMassaGordura,
-      classMassaMuscular: _classMassaMuscular, // [NOVO]
+      classMassaMuscular: _classMassaMuscular,
       classPercentualGordura: _classPercentualGordura,
+      classMassaEsqueletica: null,
       classImc: _classImc,
       classCmb: _classCmb,
       classRcq: _classRcq,
@@ -204,7 +246,7 @@ class _NutricionistaAntropometriaScreenState
     });
     _massaCorporalCtrl.clear();
     _massaGorduraCtrl.clear();
-    _massaMuscularCtrl.clear(); // [NOVO]
+    _massaMuscularCtrl.clear();
     _percentualGorduraCtrl.clear();
     _imcCtrl.clear();
     _cmbCtrl.clear();
@@ -218,7 +260,7 @@ class _NutricionistaAntropometriaScreenState
       _dataSelecionada = item.data ?? DateTime.now();
       _classMassaCorporal = item.classMassaCorporal ?? 'Ideal';
       _classMassaGordura = item.classMassaGordura ?? 'Ideal';
-      _classMassaMuscular = item.classMassaMuscular ?? 'Ideal'; // [NOVO]
+      _classMassaMuscular = item.classMassaMuscular ?? 'Ideal';
       _classPercentualGordura = item.classPercentualGordura ?? 'Ideal';
       _classImc = item.classImc ?? 'Ideal';
       _classCmb = item.classCmb ?? 'Ideal';
@@ -226,7 +268,7 @@ class _NutricionistaAntropometriaScreenState
     });
     _massaCorporalCtrl.text = item.massaCorporal?.toString() ?? '';
     _massaGorduraCtrl.text = item.massaGordura?.toString() ?? '';
-    _massaMuscularCtrl.text = item.massaMuscular?.toString() ?? ''; // [NOVO]
+    _massaMuscularCtrl.text = item.massaMuscular?.toString() ?? '';
     _percentualGorduraCtrl.text = item.percentualGordura?.toString() ?? '';
     _imcCtrl.text = item.imc?.toString() ?? '';
     _cmbCtrl.text = item.cmb?.toString() ?? '';
@@ -283,15 +325,14 @@ class _NutricionistaAntropometriaScreenState
                             _buildSecaoTitulo(),
                             const SizedBox(height: 15),
                             
-                            // INPUTS EXISTENTES
+                            // Agora TODOS os inputs chamam _calcularSugestaoAutomatica
                             _buildInputComStatus(
                                 'Massa Corporal (kg)',
                                 _massaCorporalCtrl,
                                 _classMassaCorporal,
                                 (val) => setState(() => _classMassaCorporal = val),
-                                null),
+                                (v) => _calcularSugestaoAutomatica('Peso', v)),
                             
-                            // [NOVO INPUT] Massa Muscular
                             _buildInputComStatus(
                                 'Massa Muscular (kg)',
                                 _massaMuscularCtrl,
@@ -304,14 +345,14 @@ class _NutricionistaAntropometriaScreenState
                                 _massaGorduraCtrl,
                                 _classMassaGordura,
                                 (val) => setState(() => _classMassaGordura = val),
-                                null), // Removida automação pois pode conflitar com %
+                                (v) => _calcularSugestaoAutomatica('MassaGorda', v)),
                             
                             _buildInputComStatus(
                                 'Percentual Gordura (%)',
                                 _percentualGorduraCtrl,
                                 _classPercentualGordura,
                                 (val) => setState(() => _classPercentualGordura = val),
-                                (v) => _calcularSugestaoAutomatica('Gordura', v)),
+                                (v) => _calcularSugestaoAutomatica('GorduraPercent', v)),
                             
                             _buildInputComStatus(
                                 'IMC (kg/m²)',
@@ -325,7 +366,7 @@ class _NutricionistaAntropometriaScreenState
                                 _rcqCtrl,
                                 _classRcq,
                                 (val) => setState(() => _classRcq = val),
-                                null), // Removida automação complexa
+                                (v) => _calcularSugestaoAutomatica('RCQ', v)),
                             
                             _buildInputComStatus(
                                 'CMB (cm)',
@@ -352,39 +393,12 @@ class _NutricionistaAntropometriaScreenState
     );
   }
 
-  // ... (MÉTODOS AUXILIARES: _buildHeaderCard, _buildInputComStatus, etc. MANTIDOS IGUAIS) ...
-  // Apenas certifique-se de que estão presentes no arquivo final.
-  
-  // Exemplo de um método auxiliar para garantir que não quebre:
-  Widget _buildInputComStatus(String label, TextEditingController ctrl, String status, Function(String) onStatus, Function(String)? onInput) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: AppStyles.borderButton, border: Border.all(color: Colors.grey[200]!)),
-      child: Column(
-        children: [
-          Row(children: [
-            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))),
-            SizedBox(width: 80, child: TextFormField(controller: ctrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, onChanged: onInput, decoration: const InputDecoration(hintText: '0.0', border: OutlineInputBorder())))
-          ]),
-          const SizedBox(height: 10),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            _buildChoiceChip('Abaixo', const Color(0xFF5E6EE6), status, onStatus),
-            _buildChoiceChip('Ideal', const Color(0xFF4CAF50), status, onStatus),
-            _buildChoiceChip('Acima', const Color(0xFFFF7043), status, onStatus),
-          ])
-        ],
-      ),
-    );
-  }
-  
   // --- WIDGETS AUXILIARES ---
 
   Widget _buildHeaderCard(String dataTexto) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Seletor de Data (Card Clicável)
         InkWell(
           onTap: _selecionarData,
           borderRadius: AppStyles.borderButton,
@@ -403,7 +417,7 @@ class _NutricionistaAntropometriaScreenState
                 Row(
                   children: [
                     const Icon(Icons.edit_calendar,
-                        color: AppColors.roxo, size: 20), // Ícone de edição
+                        color: AppColors.roxo, size: 20),
                     const SizedBox(width: 8),
                     Text(dataTexto,
                         style: const TextStyle(
@@ -452,6 +466,80 @@ class _NutricionistaAntropometriaScreenState
             icon: const Icon(Icons.info_outline, color: AppColors.roxo),
             onPressed: () => _mostrarLegenda(context)),
       ],
+    );
+  }
+
+  Widget _buildInputComStatus(
+      String label,
+      TextEditingController ctrl,
+      String statusAtual,
+      Function(String) onStatusChanged,
+      Function(String)? onChangedInput) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppStyles.borderButton,
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                  child: Text(label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14))),
+              SizedBox(
+                  width: 90,
+                  height: 40,
+                  child: TextFormField(
+                    controller: ctrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    onChanged: onChangedInput,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: AppColors.roxo),
+                    decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.only(bottom: 5),
+                        hintText: '0.0',
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none)),
+                  )),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(20)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildChoiceChip('Abaixo', const Color(0xFF5E6EE6),
+                    statusAtual, onStatusChanged),
+                _buildChoiceChip('Ideal', const Color(0xFF4CAF50),
+                    statusAtual, onStatusChanged),
+                _buildChoiceChip('Acima', const Color(0xFFFF7043),
+                    statusAtual, onStatusChanged),
+              ],
+            ),
+          )
+        ],
+      ),
     );
   }
 

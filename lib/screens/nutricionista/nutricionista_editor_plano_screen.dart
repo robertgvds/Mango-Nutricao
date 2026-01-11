@@ -530,87 +530,103 @@ class _CriarAlimentoScreenState extends State<_CriarAlimentoScreen> {
     }
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.verde,
-      appBar: AppBar(title: const Text("Novo Alimento", style: TextStyle(color: Colors.white)), backgroundColor: AppColors.verde, iconTheme: const IconThemeData(color: Colors.white), elevation: 0),
-      body: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: AppStyles.borderTopCard),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Informações Básicas", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 15),
-                TextFormField(controller: _nomeCtrl, decoration: const InputDecoration(labelText: "Nome (ex: Whey)", border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? "Obrigatório" : null),
-                const SizedBox(height: 15),
-                Row(children: [
-                  Expanded(child: TextFormField(controller: _caloriasCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Kcal (100g)", border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? "Obrigatório" : null)),
-                  const SizedBox(width: 10),
-                  Expanded(child: TextFormField(controller: _qtdCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Qtd (g)", border: OutlineInputBorder()))),
-                ]),
-                
-                const SizedBox(height: 25),
-                const Text("Macronutrientes (por 100g)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 15),
-                Row(children: [
-                  Expanded(child: _buildInput(_carbCtrl, "Carb (g)")),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildInput(_protCtrl, "Prot (g)")),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildInput(_gordCtrl, "Gord (g)")),
-                ]),
+      appBar: AppBar(
+        title: const Text("Novo Alimento", style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.verde,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      // MUDANÇA AQUI: Usamos Column + Expanded para forçar o branco até o rodapé
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              width: double.infinity, // Garante que o branco ocupe a largura toda
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: AppStyles.borderTopCard,
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Informações Básicas", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 15),
+                      TextFormField(controller: _nomeCtrl, decoration: const InputDecoration(labelText: "Nome (ex: Whey)", border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+                      const SizedBox(height: 15),
+                      Row(children: [
+                        Expanded(child: TextFormField(controller: _caloriasCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Kcal (100g)", border: OutlineInputBorder()), validator: (v) => v!.isEmpty ? "Obrigatório" : null)),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextFormField(controller: _qtdCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Qtd (g)", border: OutlineInputBorder()))),
+                      ]),
+                      
+                      const SizedBox(height: 25),
+                      const Text("Macronutrientes (por 100g)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 15),
+                      Row(children: [
+                        Expanded(child: _buildInput(_carbCtrl, "Carb (g)")),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildInput(_protCtrl, "Prot (g)")),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildInput(_gordCtrl, "Gord (g)")),
+                      ]),
 
-                const SizedBox(height: 25),
-                const Text("Micronutrientes (por 100g)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 15),
-                
-                // Linha 1: Fibras, Cálcio
-                Row(children: [
-                  Expanded(child: _buildInput(_fibraCtrl, "Fibras (g)")),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildInput(_calcioCtrl, "Cálcio (mg)")),
-                ]),
-                const SizedBox(height: 10),
-                
-                // Linha 2: Magnésio, Ferro
-                Row(children: [
-                  Expanded(child: _buildInput(_magnesioCtrl, "Magnésio (mg)")),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildInput(_ferroCtrl, "Ferro (mg)")),
-                ]),
-                const SizedBox(height: 10),
+                      const SizedBox(height: 25),
+                      const Text("Micronutrientes (por 100g)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 15),
+                      
+                      // Linha 1: Fibras, Cálcio
+                      Row(children: [
+                        Expanded(child: _buildInput(_fibraCtrl, "Fibras (g)")),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildInput(_calcioCtrl, "Cálcio (mg)")),
+                      ]),
+                      const SizedBox(height: 10),
+                      
+                      // Linha 2: Magnésio, Ferro
+                      Row(children: [
+                        Expanded(child: _buildInput(_magnesioCtrl, "Magnésio (mg)")),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildInput(_ferroCtrl, "Ferro (mg)")),
+                      ]),
+                      const SizedBox(height: 10),
 
-                // Linha 3: Potássio
-                _buildInput(_potassioCtrl, "Potássio (mg)"),
-                const SizedBox(height: 10),
+                      // Linha 3: Potássio
+                      _buildInput(_potassioCtrl, "Potássio (mg)"),
+                      const SizedBox(height: 10),
 
-                // Linha 4: Vitaminas
-                Row(children: [
-                  Expanded(child: _buildInput(_vitACtrl, "Vit. A (RAE)")),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildInput(_vitCCtrl, "Vit. C (mg)")),
-                ]),
+                      // Linha 4: Vitaminas
+                      Row(children: [
+                        Expanded(child: _buildInput(_vitACtrl, "Vit. A (RAE)")),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildInput(_vitCCtrl, "Vit. C (mg)")),
+                      ]),
 
-                const SizedBox(height: 40),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _salvar,
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.verde, padding: const EdgeInsets.symmetric(vertical: 16), shape: AppStyles.shapeButton),
-                    child: const Text("ADICIONAR AO PLANO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 40),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _salvar,
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.verde, padding: const EdgeInsets.symmetric(vertical: 16), shape: AppStyles.shapeButton),
+                          child: const Text("ADICIONAR AO PLANO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+
+                      const SizedBox(height: 40), // Espaço extra final
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 100),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
