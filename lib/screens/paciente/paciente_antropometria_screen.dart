@@ -108,22 +108,20 @@ class _AntropometriaVisualizacaoPageState
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 10),
               _buildItemIntervalo("IMC", "18.5 - 24.9 kg/m²"),
-              _buildItemIntervalo("% Gordura", isFem ? "18% - 28%" : "10% - 20%"),
+              _buildItemIntervalo(
+                  "% Gordura", isFem ? "18% - 28%" : "10% - 20%"),
               _buildItemIntervalo("RCQ", isFem ? "0.70 - 0.85" : "0.80 - 0.95"),
               _buildItemIntervalo("CMB", isFem ? "20 - 29 cm" : "23 - 34 cm"),
-              
               const Divider(height: 30),
               const Text("Escala Visual (Máximos):",
                   style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 5),
-              const Text(
-                  "As barras preenchem até este valor máximo:",
+              const Text("As barras preenchem até este valor máximo:",
                   style: TextStyle(fontSize: 11, color: Colors.grey)),
               const SizedBox(height: 10),
               _buildItemEscala("Peso Total", "até 150 kg"),
               _buildItemEscala("Massa Gorda", "até 50 kg"),
-              // REMOVIDO: Massa Muscular da escala visual
-              _buildItemEscala("Gordura %", "até 50%"), 
+              _buildItemEscala("Gordura %", "até 50%"),
               _buildItemEscala("IMC", "até 50 kg/m²"),
               _buildItemEscala("CMB", "até 60 cm"),
               _buildItemEscala("RCQ", "até 1.2"),
@@ -134,7 +132,8 @@ class _AntropometriaVisualizacaoPageState
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Entendi",
-                style: TextStyle(color: AppColors.roxo, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: AppColors.roxo, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -150,7 +149,8 @@ class _AntropometriaVisualizacaoPageState
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -160,14 +160,20 @@ class _AntropometriaVisualizacaoPageState
       margin: const EdgeInsets.only(bottom: 8.0),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8)
-      ),
+          color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(titulo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
-          Text(range, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50))),
+          Text(titulo,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87)),
+          Text(range,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4CAF50))),
         ],
       ),
     );
@@ -202,12 +208,12 @@ class _AntropometriaVisualizacaoPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.roxo,
+      backgroundColor: AppColors.roxo, // PADRÃO: Fundo da cor do tema (Roxo)
       appBar: AppBar(
-        backgroundColor: AppColors.roxo,
+        backgroundColor: AppColors.roxo, // PADRÃO: AppBar da cor do tema
         elevation: 0,
         title: const Text('Antropometria',
-            style: TextStyle(color: Colors.white)),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
@@ -229,13 +235,15 @@ class _AntropometriaVisualizacaoPageState
                       child: ElevatedButton.icon(
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Exportando PDF...')));
+                              const SnackBar(
+                                  content: Text('Exportando PDF...')));
                         },
                         icon: const Icon(Icons.picture_as_pdf, size: 20),
                         label: const Text('Exportar como PDF'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7B52AB),
-                          foregroundColor: Colors.white,
+                          // PADRÃO: Botão branco com texto da cor do tema ou inverso
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.roxo,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
@@ -249,9 +257,9 @@ class _AntropometriaVisualizacaoPageState
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.white, // PADRÃO: Container branco
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
+                        topLeft: Radius.circular(30), // PADRÃO: Bordas arredondadas 30
                         topRight: Radius.circular(30),
                       ),
                     ),
@@ -273,10 +281,14 @@ class _AntropometriaVisualizacaoPageState
                             const Text('Legenda: ',
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 12)),
-                            _buildLegendaChip('Abaixo', const Color(0xFF5E6EE6)),
-                            _buildLegendaChip('Ideal', const Color(0xFF4CAF50)),
-                            _buildLegendaChip('Acima', const Color(0xFFFF7043)),
+                            _buildLegendaChip(
+                                'Abaixo', const Color(0xFF5E6EE6)),
+                            _buildLegendaChip(
+                                'Ideal', const Color(0xFF4CAF50)),
+                            _buildLegendaChip(
+                                'Acima', const Color(0xFFFF7043)),
                             const Spacer(),
+                            // Opção "Saiba mais" mantida
                             InkWell(
                               onTap: () => _mostrarLegenda(context),
                               child: Row(
@@ -284,7 +296,7 @@ class _AntropometriaVisualizacaoPageState
                                   Icon(Icons.info_outline,
                                       size: 16, color: AppColors.roxo),
                                   SizedBox(width: 4),
-                                  Text('+ Referências',
+                                  Text('+ Saiba mais',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
@@ -313,8 +325,7 @@ class _AntropometriaVisualizacaoPageState
                               _ultimaAvaliacao!.percentualGordura,
                               '%',
                               _ultimaAvaliacao!.classPercentualGordura,
-                              maxVal: 50.0), 
-                          // REMOVIDO: Barra de Massa Esquelética
+                              maxVal: 50.0),
                           _buildIndicadorBarra(
                               'IMC',
                               _ultimaAvaliacao!.imc,
@@ -371,7 +382,6 @@ class _AntropometriaVisualizacaoPageState
                             corLinha: AppColors.roxo,
                             unidade: 'kg',
                           ),
-                          // REMOVIDO: Gráfico de Massa Muscular Esquelética
                           _buildGraficoCard(
                             titulo: "Percentual de Gordura (%)",
                             dados: _historico,
@@ -396,21 +406,35 @@ class _AntropometriaVisualizacaoPageState
     double gordura = _ultimaAvaliacao!.percentualGordura ?? 0;
     double magra = 100 - gordura;
 
+    // PADRÃO: Card Branco com sombra suave e borda fina
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16), // PADRÃO: Radius 16
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
               width: 60,
               height: 60,
+              padding: const EdgeInsets.all(12), // Padding interno para o ícone
               decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: AppColors.roxo.withOpacity(0.1), // Fundo translúcido
                   borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.category, color: Colors.white, size: 30)),
+              // PADRÃO: Ícone de Acessibilidade/Pessoa
+              child: const Icon(Icons.accessibility_new,
+                  color: AppColors.roxo, size: 30)),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -429,10 +453,10 @@ class _AntropometriaVisualizacaoPageState
                 const SizedBox(height: 8),
                 Row(children: [
                   _buildBadge('Massa Magra: ${magra.toStringAsFixed(0)}%',
-                      Colors.green),
+                      const Color(0xFF4CAF50)), // Verde
                   const SizedBox(width: 8),
                   _buildBadge('Massa Gorda: ${gordura.toStringAsFixed(0)}%',
-                      Colors.orange),
+                      const Color(0xFFFF7043)), // Laranja
                 ]),
                 const SizedBox(height: 12),
                 Text(_ultimaAvaliacao!.observacoes ?? '',
@@ -470,19 +494,54 @@ class _AntropometriaVisualizacaoPageState
               Text(label,
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600)),
-              Text('${v.toStringAsFixed(1)}$unidade',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: cor, fontSize: 12)),
+              Row(
+                children: [
+                  Text('${v.toStringAsFixed(1)}$unidade',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: cor,
+                          fontSize: 12)),
+                  const SizedBox(width: 5),
+                  // PADRÃO: Badge de status pequeno ao lado do valor
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                        color: cor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4)),
+                    child: Text(classificacao ?? '-',
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: cor,
+                            fontWeight: FontWeight.bold)),
+                  )
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: percent,
-              minHeight: 10,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(cor),
+          // PADRÃO: Barra com sombra (como solicitado)
+          Container(
+            height: 10,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: percent,
+              child: Container(
+                decoration: BoxDecoration(
+                    color: cor,
+                    borderRadius: BorderRadius.circular(5),
+                    boxShadow: [
+                      BoxShadow(
+                          color: cor.withOpacity(0.4),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2))
+                    ]),
+              ),
             ),
           ),
         ],
@@ -512,12 +571,23 @@ class _AntropometriaVisualizacaoPageState
     double intervalY = (maxY - minY) / 4;
     if (intervalY <= 0) intervalY = 10;
 
+    // PADRÃO: Card Branco com sombra
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -531,7 +601,9 @@ class _AntropometriaVisualizacaoPageState
           Container(
             height: 220,
             decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                // O gráfico já está dentro de um card branco, não precisa de outro fundo
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16)),
             padding:
                 const EdgeInsets.only(right: 24, left: 12, top: 24, bottom: 12),
             child: LineChart(
@@ -636,14 +708,16 @@ class _AntropometriaVisualizacaoPageState
     );
   }
 
+  // PADRÃO: Badge (Etiqueta)
   Widget _buildBadge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration:
-          BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+          color: color.withOpacity(0.1), // Fundo translúcido
+          borderRadius: BorderRadius.circular(8)), // Bordas 8
       child: Text(text,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -656,7 +730,9 @@ class _AntropometriaVisualizacaoPageState
             BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
         child: Text(label,
             style: const TextStyle(
-                color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold)),
       ),
     );
   }

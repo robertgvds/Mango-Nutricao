@@ -367,6 +367,7 @@ class _NutricionistaAntropometriaScreenState
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Referência (${_generoPaciente})", style: const TextStyle(color: AppColors.roxo, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             _buildTabelaRow("IMC", "< 18.5", "18.5-24.9", "≥ 25.0"),

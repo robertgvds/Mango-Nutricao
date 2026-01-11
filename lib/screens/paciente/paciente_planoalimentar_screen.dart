@@ -85,7 +85,7 @@ class _PacientePlanoAlimentarScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.verde,
+      backgroundColor: AppColors.verde, // PADRÃO: Fundo Verde
       appBar: AppBar(
         backgroundColor: AppColors.verde,
         elevation: 0,
@@ -105,7 +105,7 @@ class _PacientePlanoAlimentarScreenState
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : CustomScrollView(
               slivers: [
-                // 1. O botão fica dentro de um SliverToBoxAdapter
+                // 1. Botão Exportar
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -120,8 +120,9 @@ class _PacientePlanoAlimentarScreenState
                         icon: const Icon(Icons.picture_as_pdf, size: 20),
                         label: const Text('Exportar como PDF'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.verdeEscuro, // Ou uma cor mais escura definida
-                          foregroundColor: Colors.white,
+                          // PADRÃO: Botão Branco com texto Verde
+                          backgroundColor: Colors.white, 
+                          foregroundColor: AppColors.verde,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -132,15 +133,15 @@ class _PacientePlanoAlimentarScreenState
                   ),
                 ),
 
-                // 2. A parte branca usa SliverFillRemaining
+                // 2. Conteúdo em Container Branco
                 SliverFillRemaining(
-                  hasScrollBody: false, // IMPORTANTE: Isso evita o erro de layout overflow
+                  hasScrollBody: false,
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.white, // PADRÃO: Branco
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
+                        topLeft: Radius.circular(30), // PADRÃO: Radius 30
                         topRight: Radius.circular(30),
                       ),
                     ),
@@ -177,7 +178,7 @@ class _PacientePlanoAlimentarScreenState
                           ),
                           const SizedBox(height: 16),
 
-                          // Renderiza os Cards das refeições usando MAP (sem ListView aninhado)
+                          // Lista de Refeições
                           if (_planoAtual!.refeicoes.isEmpty)
                             const Padding(
                               padding: EdgeInsets.all(20),
@@ -187,7 +188,7 @@ class _PacientePlanoAlimentarScreenState
                             ..._planoAtual!.refeicoes.map((ref) => _buildRefeicaoCardStyle(ref)),
                         ],
 
-                        // Se quiser mostrar histórico abaixo:
+                        // Histórico
                         if (_todosPlanos.length > 1) ...[
                            const SizedBox(height: 30),
                            const Divider(),
@@ -196,7 +197,10 @@ class _PacientePlanoAlimentarScreenState
                              child: Text("Histórico", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
                            ),
                            ..._todosPlanos.skip(1).map((antigo) => ListTile(
-                             leading: const Icon(Icons.history, color: Colors.grey),
+                             leading: CircleAvatar(
+                               backgroundColor: Colors.grey[100],
+                               child: const Icon(Icons.history, color: Colors.grey),
+                             ),
                              title: Text(antigo.nome),
                              subtitle: Text("Data: ${_formatDate(antigo.dataCriacao)}"),
                              onTap: () => _mostrarDetalhesPlanoAntigo(antigo),
@@ -223,16 +227,15 @@ class _PacientePlanoAlimentarScreenState
               "Nenhum plano alimentar encontrado.",
               style: TextStyle(color: Colors.grey),
             ),
-            Text("ID: $_idUsadoParaBusca", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            // Text("ID: $_idUsadoParaBusca", style: const TextStyle(fontSize: 10, color: Colors.grey)),
           ],
         ),
       ),
     );
   }
 
-  // --- CARD NO ESTILO SOLICITADO ---
+  // --- CARD NO ESTILO PADRONIZADO ---
   Widget _buildRefeicaoCardStyle(Refeicao refeicao) {
-    // Usando getters da sua classe ou calculando na hora
     double cal = refeicao.totalCalorias;
     double prot = refeicao.totalProteinas;
     double carb = refeicao.totalCarboidratos;
@@ -242,8 +245,9 @@ class _PacientePlanoAlimentarScreenState
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16), // PADRÃO: Radius 16
         boxShadow: [
+          // PADRÃO: Sombra suave
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             spreadRadius: 2,
@@ -251,6 +255,7 @@ class _PacientePlanoAlimentarScreenState
             offset: const Offset(0, 2),
           ),
         ],
+        // PADRÃO: Borda fina cinza
         border: Border.all(color: Colors.grey.withOpacity(0.1)),
       ),
       child: Theme(
@@ -260,7 +265,7 @@ class _PacientePlanoAlimentarScreenState
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.verde.withOpacity(0.1),
+              color: AppColors.verde.withOpacity(0.1), // PADRÃO: Fundo verde translúcido
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.restaurant, color: AppColors.verde),
@@ -283,7 +288,6 @@ class _PacientePlanoAlimentarScreenState
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               child: Column(
                 children: [
-                  // Resumo Macros
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -293,7 +297,6 @@ class _PacientePlanoAlimentarScreenState
                     ],
                   ),
                   const Divider(height: 20),
-                  // Lista de alimentos
                   if (refeicao.alimentos.isEmpty)
                     const Text("Sem alimentos", style: TextStyle(color: Colors.grey))
                   else
