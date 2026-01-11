@@ -318,7 +318,12 @@ class _NutricionistaPerfilPacienteScreenState
             _buildGraficoEvolucao("Evolução do Peso (kg)", (item) => item.massaCorporal ?? 0, AppColors.roxo),
             const SizedBox(height: 15),
             _buildGraficoEvolucao("Evolução Gordura (%)", (item) => item.percentualGordura ?? 0, const Color(0xFFFF7043)),
-            const SizedBox(height: 25),
+            const SizedBox(height: 15),
+            _buildGraficoEvolucao("Evolução IMC", (item) => item.imc ?? 0, AppColors.verde),
+            const SizedBox(height: 15),
+            _buildGraficoEvolucao("Evolução CMB (cm)", (item) => item.cmb ?? 0, const Color(0xFF5E6EE6)),
+            const SizedBox(height: 15),
+            _buildGraficoEvolucao("Evolução RCQ", (item) => item.relacaoCinturaQuadril ?? 0, const Color(0xFF9C27B0)),
           ],
 
           const Divider(),
