@@ -1,3 +1,4 @@
+import 'package:app/screens/general/welcome_screen.dart';
 import 'package:app/screens/nutricionista/nutricionista_navigation.dart';
 import 'package:app/screens/paciente/paciente_navigation.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ class AuthCheck extends StatelessWidget {
 
     // 2. Usuário não logado -> Tela de Login
     if (auth.usuario == null) {
-      return const LoginScreen();
+      return const InitialScreen();
     } 
     
     // 3. Usuário logado, mas E-mail não verificado -> Tela de Verificação
