@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_colors.dart';
+import '../../widgets/app_styles.dart'; // [IMPORTANTE]
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -20,26 +21,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _fazerLogin() async {
     setState(() => _estaCarregando = true);
     try {
-      // 1. Tenta realizar o login no Firebase
       await Provider.of<AuthService>(context, listen: false).login(
         _emailController.text.trim(),
         _senhaController.text.trim(),
       );
-
-      // 2. Se o login for bem-sucedido, fechamos esta tela.
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()), 
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _estaCarregando = false);
     }
@@ -48,110 +36,83 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.branco,
-      body: SafeArea(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white, 
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 30),
-              
-              // Logo da Manga com Fundo Roxo
-              Center(
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: const BoxDecoration(
-                    color: AppColors.roxoClaro,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Transform.scale(
-                    scale: 1.2,
-                    child: Image.asset(
-                      'assets/imagem_logo_manga.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+              // LOGO
+              Container(
+                width: 120, height: 120,
+                decoration: BoxDecoration(
+                  color: AppColors.roxo.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Image.asset('assets/imagem_logo_manga.png', fit: BoxFit.fill),
                 ),
               ),
               
-              const SizedBox(height: 30),
-              const Text(
-                "Login", 
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)
+              const SizedBox(height: 25),
+              const Text("Bem-vindo de volta!", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const Text("Faça login para continuar", style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 40),
+
+              // INPUTS
+              _buildTextField("E-mail", _emailController, Icons.email_outlined, type: TextInputType.emailAddress),
+              const SizedBox(height: 15),
+              _buildTextField("Senha", _senhaController, Icons.lock_outline, isPassword: true),
+
+              // ESQUECI SENHA
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
+                  child: const Text("Esqueceu a senha?", style: TextStyle(color: AppColors.roxo, fontWeight: FontWeight.w600)),
+                ),
               ),
+
               const SizedBox(height: 20),
 
-              // Campos de Entrada
-              _buildTextField("E-mail", _emailController, keyboardType: TextInputType.emailAddress),
-              _buildTextField("Senha", _senhaController, obscure: true),
-
-              // Esqueci a Senha
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                    );
-                  },
-                  child: const Text(
-                    "Esqueci a minha senha",
-                    style: TextStyle(
-                      color: AppColors.verdeEscuro, 
-                      fontWeight: FontWeight.w600
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Botão Entrar
+              // BOTÃO ENTRAR
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
                   onPressed: _estaCarregando ? null : _fazerLogin,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.verdeEscuro,
+                    backgroundColor: AppColors.verde,
+                    foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey[300],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)
-                    ),
+                    shape: AppStyles.shapeButton, // Radius 16
                     elevation: 0,
                   ),
                   child: _estaCarregando
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Entrar",
-                          style: TextStyle(
-                            color: Colors.white, 
-                            fontSize: 18, 
-                            fontWeight: FontWeight.bold
-                          ),
-                        ),
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("ENTRAR", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 30),
 
-              // Link para Cadastro
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (c) => const RegisterScreen()),
-                  );
-                },
-                child: const Text(
-                  "Não tem uma conta? Cadastre-se",
-                  style: TextStyle(
-                    color: AppColors.roxoEscuro, 
-                    fontWeight: FontWeight.bold
+              // RODAPÉ CADASTRO
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Não tem uma conta? ", style: TextStyle(color: Colors.grey)),
+                  GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
+                    child: const Text("Cadastre-se", style: TextStyle(color: AppColors.roxo, fontWeight: FontWeight.bold)),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -160,28 +121,18 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Widget auxiliar para construir os TextFields mantendo o padrão visual
-  Widget _buildTextField(
-    String hint, 
-    TextEditingController controller, 
-    {bool obscure = false, TextInputType keyboardType = TextInputType.text}
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: true,
-          fillColor: AppColors.cinzaClaro,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30), 
-            borderSide: BorderSide.none
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        ),
+  Widget _buildTextField(String hint, TextEditingController ctrl, IconData icon, {bool isPassword = false, TextInputType type = TextInputType.text}) {
+    return TextField(
+      controller: ctrl,
+      obscureText: isPassword,
+      keyboardType: type,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.grey),
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.cinzaClaro,
+        border: OutlineInputBorder(borderRadius: AppStyles.borderButton, borderSide: BorderSide.none), // Radius 16
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
     );
   }

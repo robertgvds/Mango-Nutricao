@@ -12,6 +12,7 @@ class Nutricionista extends Usuario {
     required super.email,
     required super.senha,
     required super.codigo,
+    required super.genero,
     required this.crn,
     List<String>? pacientesIds,
   }) : pacientesIds = pacientesIds ?? [];
@@ -24,6 +25,7 @@ class Nutricionista extends Usuario {
       email: usuario.email,
       senha: usuario.senha,
       codigo: usuario.codigo,
+      genero: usuario.genero,
       crn: crn,
       pacientesIds: [],
     );
@@ -62,6 +64,7 @@ class Nutricionista extends Usuario {
       email: map['email'] ?? '',
       senha: map['senha'] ?? '',
       codigo: map['codigo'] ?? '',
+      genero: map['genero'] ?? '',
       crn: map['crn'] ?? '',
       pacientesIds: listaIds,
     );

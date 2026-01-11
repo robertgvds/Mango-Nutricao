@@ -6,6 +6,7 @@ class Usuario {
   String senha;
   String codigo;
   String dataNascimento;
+  String genero;
 
   Usuario({
     this.id,
@@ -14,6 +15,7 @@ class Usuario {
     required this.senha,
     required this.codigo,
     required this.dataNascimento,
+    required this.genero,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +26,7 @@ class Usuario {
       'senha': senha,
       'codigo': codigo,
       'dataNascimento': dataNascimento,
+      'genero': genero,
     };
   }
 
@@ -35,6 +38,7 @@ class Usuario {
       senha: map['senha'] ?? '',
       codigo: map['codigo'] ?? '',
       dataNascimento: map['dataNascimento'] ?? '',
+      genero: map['genero'] ?? '',
     );
   }
 }

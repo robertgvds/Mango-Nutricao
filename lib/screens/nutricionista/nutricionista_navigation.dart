@@ -1,7 +1,7 @@
-import 'package:app/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/app_colors.dart';
+import '../../services/auth_service.dart';
 import 'nutricionista_home_screen.dart';
 import './nutricionista_listapacientes_screen.dart';
 

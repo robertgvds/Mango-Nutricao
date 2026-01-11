@@ -1,5 +1,5 @@
-import 'package:app/classes/plano_alimentar.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../classes/plano_alimentar.dart';
 
 class PlanoAlimentarRepository {
   final FirebaseDatabase _db = FirebaseDatabase.instance;

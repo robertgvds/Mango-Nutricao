@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-
-import 'package:app/screens/general/login_screen.dart';
+import 'general/login_screen.dart';
 import 'nutricionista/nutricionista_antropometria_screen.dart';
 import 'paciente/paciente_antropometria_screen.dart';
 

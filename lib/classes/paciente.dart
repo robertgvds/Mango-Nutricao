@@ -4,7 +4,7 @@ import 'refeicao.dart';
 import 'antropometria.dart';
 
 class Paciente extends Usuario {
-  String? nutricionistaCrn;
+  String? nutricionistaId;
   List<Refeicao> refeicoes;
   Antropometria? antropometria;
 
@@ -15,7 +15,8 @@ class Paciente extends Usuario {
     required super.senha,
     required super.codigo,
     required super.dataNascimento,
-    this.nutricionistaCrn,
+    required super.genero,
+    this.nutricionistaId,
     this.refeicoes = const [],
     this.antropometria,
   });
@@ -23,7 +24,7 @@ class Paciente extends Usuario {
   // Cria um Paciente a partir de um objeto Usuario genérico (ex: no cadastro)
   factory Paciente.fromUsuario(
     Usuario usuario, {
-    required String nutricionistaCrn,
+    required String nutricionistaId,
   }) {
     return Paciente(
       id: usuario.id,
@@ -31,7 +32,8 @@ class Paciente extends Usuario {
       email: usuario.email,
       senha: usuario.senha,
       codigo: usuario.codigo,
-      nutricionistaCrn: nutricionistaCrn,
+      genero: usuario.genero,
+      nutricionistaId: nutricionistaId,
       refeicoes: [],
       dataNascimento: usuario.dataNascimento,
       antropometria: null,
@@ -85,7 +87,8 @@ class Paciente extends Usuario {
       email: map['email'] ?? '',
       senha: map['senha'] ?? '',
       codigo: map['codigo'] ?? '',
-      nutricionistaCrn: map['nutricionistaCrn'] ?? '',
+      genero: map['genero'] ?? '',
+      nutricionistaId: map['nutricionistaId'] ?? '',
       refeicoes: listaDecodificada,
       dataNascimento: map['dataNascimento'] ?? '',
       antropometria: dadosAntropometria,
@@ -96,7 +99,7 @@ class Paciente extends Usuario {
   @override
   Map<String, dynamic> toMap() {
     final map = super.toMap();
-    map['nutricionistaCrn'] = nutricionistaCrn;
+    map['nutricionistaId'] = nutricionistaId;
     
     // Converte a lista de objetos Refeicao para lista de Maps
     map['refeicoes'] = refeicoes.map((e) => e.toMap()).toList();

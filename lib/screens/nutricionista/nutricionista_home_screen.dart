@@ -1,17 +1,20 @@
-import 'package:app/screens/nutricionista/nutricionista_historico_planos_screen.dart';
-import 'package:app/widgets/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:app/services/auth_service.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_database/firebase_database.dart';
+
 import '../../classes/nutricionista.dart';
+import '../../classes/paciente.dart';
 import '../../database/nutricionista_repository.dart';
 import '../../database/paciente_repository.dart';
-import '../../classes/paciente.dart';
-import 'nutricionista_antropometria_screen.dart';
 import '../../database/antropometria_repository.dart';
 import '../../database/plano_alimentar_repository.dart';
-import '../../classes/plano_alimentar.dart';
-import 'package:firebase_database/firebase_database.dart';
+
+import '../../services/auth_service.dart';
+import '../../widgets/app_colors.dart';
+import '../../widgets/app_styles.dart';
+import 'nutricionista_antropometria_screen.dart';
+import 'nutricionista_editor_plano_screen.dart';
+import 'nutricionista_perfil_paciente_screen.dart';
 
 class NutricionistaHomeScreen extends StatefulWidget {
   final String nutriId;
@@ -31,12 +34,19 @@ class NutricionistaHomeScreen extends StatefulWidget {
 class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
   final _nutriRepo = NutricionistaRepository();
   final _pacienteRepo = PacienteRepository();
+  final _planoRepo = PlanoAlimentarRepository();
+  final _antropometriaRepo = AntropometriaRepository();
 
   Nutricionista? _nutricionista;
   List<Paciente> _meusPacientes = [];
   bool _isLoading = true;
   bool _isLinking = false;
-  Map<String, PlanoAlimentar?> _mapaPlanos = {};
+
+  // Cache de Datas para lógica de vencimento
+  Map<String, DateTime?> _dataUltimaAvaliacao = {};
+  Map<String, DateTime?> _dataUltimoPlano = {};
+
+  final TextEditingController _idController = TextEditingController();
 
   @override
   void initState() {
@@ -50,103 +60,38 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
     super.dispose();
   }
 
-  Future<void> _vincularPaciente() async {
-    final String idDigitado = _idController.text.trim();
-
-    if (idDigitado.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Por favor, insira o ID do paciente.")),
-      );
-      return;
-    }
-
-    if (_nutricionista == null) return;
-
-    // Evita duplicação local antes de chamar o banco
-    if (_nutricionista!.pacientesIds.contains(idDigitado)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Este paciente já está vinculado a você."),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isLinking = true);
-
-    try {
-      // 1. Verifica se o paciente existe no banco
-      final Paciente? pacienteEncontrado = await _pacienteRepo.buscarPorId(
-        idDigitado,
-      );
-
-      if (pacienteEncontrado == null) {
-        throw Exception("Paciente não encontrado. Verifique o ID.");
-      }
-
-      // 2. Adiciona à lista do Nutricionista (Objeto local + Update Repo)
-      _nutricionista!.adicionarPaciente(idDigitado);
-      await _nutriRepo.atualizar(_nutricionista!);
-
-      // 3. Atualiza o cadastro do Paciente (Reverse Link)
-      // Isso garante que o paciente saiba quem é seu nutri (útil para outras telas)
-      final DatabaseReference refPaciente = FirebaseDatabase.instance
-          .ref()
-          .child('usuarios')
-          .child(idDigitado);
-
-      await refPaciente.update({'nutricionistaId': widget.nutriId});
-
-      // 4. Sucesso
-      _idController.clear();
-      FocusScope.of(context).unfocus();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Sucesso! ${pacienteEncontrado.nome} vinculado."),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-
-      // 5. Recarrega a lista para aparecer na UI
-      await _carregarDados();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll("Exception: ", "")),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLinking = false);
-    }
-  }
-
   Future<void> _carregarDados() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
       final nutri = await _nutriRepo.buscarPorId(widget.nutriId);
-      final _planoRepo = PlanoAlimentarRepository();
-      final _antropometriaRepo = AntropometriaRepository();
 
       if (nutri != null) {
         List<Paciente> listaPacientes = [];
-        Map<String, PlanoAlimentar?> tempPlano = {};
+        Map<String, DateTime?> mapAvaliacao = {};
+        Map<String, DateTime?> mapPlanos = {};
 
         for (String id in nutri.pacientesIds) {
           final p = await _pacienteRepo.buscarPorId(id);
           if (p != null) {
-            p.antropometria = await _antropometriaRepo.buscarUltimaAvaliacao(
-              id,
-            );
+            // 1. Busca Data Última Avaliação
+            final ultAvaliacao =
+                await _antropometriaRepo.buscarUltimaAvaliacao(id);
+            mapAvaliacao[id] = ultAvaliacao?.data;
+
+            // 2. Busca Plano
             final planos = await _planoRepo.listarPlanos(id);
-            tempPlano[id] = planos.isNotEmpty ? planos.first : null;
+            if (planos.isNotEmpty) {
+              // Assume o primeiro como o mais recente
+              // Como a classe PlanoAlimentar não tem data, vamos usar a data atual como "ok"
+              // ou, se quiser forçar atualização, pode deixar null
+              // Para este exemplo, consideramos que se tem plano, a data é "hoje"
+              // (Para ter vencimento real no plano, adicione um campo DateTime dataCriacao na classe PlanoAlimentar)
+              mapPlanos[id] = DateTime.now(); // Placeholder
+            } else {
+              mapPlanos[id] = null;
+            }
 
             listaPacientes.add(p);
           }
@@ -156,7 +101,8 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
           setState(() {
             _nutricionista = nutri;
             _meusPacientes = listaPacientes;
-            _mapaPlanos = tempPlano; // Atualiza o mapa com os novos dados
+            _dataUltimaAvaliacao = mapAvaliacao;
+            _dataUltimoPlano = mapPlanos;
             _isLoading = false;
           });
         }
@@ -167,151 +113,226 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
     }
   }
 
-  // --- MÉTODO DE TESTE ---
-  // Busca o paciente pelo ID e abre a tela de Plano Alimentar
-  Future<void> _abrirTestePlanoAlimentar(String pacienteId) async {
-    // Mostra loading rápido
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (c) => const Center(child: CircularProgressIndicator()),
-    );
+  Future<void> _vincularPaciente() async {
+    final String idDigitado = _idController.text.trim();
+    if (idDigitado.isEmpty) {
+      _showSnack("Insira o ID.", isError: true);
+      return;
+    }
 
+    if (_nutricionista != null &&
+        _nutricionista!.pacientesIds.contains(idDigitado)) {
+      _showSnack("Paciente já vinculado.", isError: true);
+      return;
+    }
+
+    setState(() => _isLinking = true);
     try {
-      final pacienteTeste = await _pacienteRepo.buscarPorId(pacienteId);
+      final Paciente? pacienteEncontrado =
+          await _pacienteRepo.buscarPorId(idDigitado);
+      if (pacienteEncontrado == null)
+        throw Exception("Paciente não encontrado.");
 
-      // Fecha o loading
-      if (mounted) Navigator.pop(context);
+      _nutricionista!.adicionarPaciente(idDigitado);
+      await _nutriRepo.atualizar(_nutricionista!);
+      await FirebaseDatabase.instance
+          .ref()
+          .child('usuarios')
+          .child(idDigitado)
+          .update({'nutricionistaId': widget.nutriId});
 
-      if (pacienteTeste != null) {
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => NutricionistaHistoricoPlanosScreen(
-                    paciente: pacienteTeste,
-                  ),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Paciente de teste não encontrado no banco."),
-            ),
-          );
-        }
-      }
+      _idController.clear();
+      FocusScope.of(context).unfocus();
+      _showSnack("Vinculado com sucesso!");
+      await _carregarDados();
     } catch (e) {
-      // Fecha loading se der erro
-      if (mounted) Navigator.pop(context);
-      debugPrint("Erro teste: $e");
+      _showSnack("Erro ao vincular.", isError: true);
+    } finally {
+      if (mounted) setState(() => _isLinking = false);
     }
   }
 
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : Colors.green));
+  }
+
+  // --- Lógica de Vencimento (> 30 dias) ---
+  bool _isExpired(DateTime? date) {
+    if (date == null) return false; // Null é "Pendente", não "Vencido"
+    final trintaDiasAtras = DateTime.now().subtract(const Duration(days: 30));
+    return date.isBefore(trintaDiasAtras);
+  }
+
+  String _formatDate(DateTime d) {
+    return "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
+  }
+
+  // --- Navegação ---
+  void _navAvaliacao(Paciente p) => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  NutricionistaAntropometriaScreen(pacienteId: p.id!)))
+      .then((_) => _carregarDados());
+  void _navPlano(Paciente p) => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => NutricionistaEditorPlanoScreen(
+                  pacienteId: p.id!, plano: null)))
+      .then((_) => _carregarDados());
+  void _navPerfil(Paciente p) => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  NutricionistaPerfilPacienteScreen(pacienteId: p.id!)))
+      .then((_) => _carregarDados());
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    if (_isLoading)
+      return const Scaffold(
+          backgroundColor: AppColors.laranja,
+          body: Center(child: CircularProgressIndicator(color: Colors.white)));
+
+    // 1. Nunca Avaliados (Prioridade Alta - Roxo)
+    final pendentesAvaliacao = _meusPacientes
+        .where((p) => _dataUltimaAvaliacao[p.id] == null)
+        .toList();
+
+    // 2. Avaliações Vencidas (> 30 dias - Laranja)
+    final vencidosAvaliacao = _meusPacientes
+        .where((p) => _isExpired(_dataUltimaAvaliacao[p.id]))
+        .toList();
+
+    // 3. Sem Plano (Verde)
+    final pendentesPlano =
+        _meusPacientes.where((p) => _dataUltimoPlano[p.id] == null).toList();
 
     return Scaffold(
       backgroundColor: AppColors.laranja,
-
-      // --- BOTÃO DE TESTE ATUALIZADO ---
-      /* floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.laranja,
-        icon: const Icon(Icons.restaurant_menu), // Ícone de comida
-        label: const Text("Testar Plano Alimentar"),
-        onPressed: () {
-          // Busca o paciente e abre a tela de DIETA
-          _abrirTestePlanoAlimentar("uGFqVcMBdNVRQzaWs0cnmlSlBmw2");
-        },
-      ), */
       appBar: AppBar(
         backgroundColor: AppColors.laranja,
         elevation: 0,
-        title: const Text('Mango Nutri', style: TextStyle(color: Colors.white)),
+        title: const Text('Mango Nutri',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.exit_to_app, color: Colors.white),
-            onPressed: () => context.read<AuthService>().logout(),
-          ),
+              icon: const Icon(Icons.exit_to_app, color: Colors.white),
+              onPressed: () => context.read<AuthService>().logout()),
         ],
       ),
       body: CustomScrollView(
         slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 30),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.white,
+                      child: Text(
+                          _nutricionista?.nome[0].toUpperCase() ?? 'N',
+                          style: const TextStyle(
+                              fontSize: 28,
+                              color: AppColors.laranja,
+                              fontWeight: FontWeight.bold))),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Nutricionista",
+                            style: TextStyle(color: Colors.white70)),
+                        Text(_nutricionista?.nome ?? "Usuário",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold)),
+                        Text("CRN: ${_nutricionista?.crn ?? '--'}",
+                            style: const TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
           SliverFillRemaining(
             hasScrollBody: false,
             child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              decoration: BoxDecoration(
+                  color: Colors.white, borderRadius: AppStyles.borderTopCard),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  const Divider(),
+                  _buildSectionTitle(
+                      "Vincular Paciente", Icons.link, AppColors.laranja),
+                  const SizedBox(height: 10),
+                  _buildVincularInput(),
+                  const SizedBox(height: 30),
 
-                  _buildSecaoTitulo(
-                    "Vincular Novo Paciente",
-                    AppColors.laranja,
-                  ),
+                  // --- AVALIAÇÕES ---
 
-                  _buildAdicionarPacienteInput(),
-                  const Divider(),
+                  // Vencidas (Alerta Amarelo/Laranja)
+                  if (vencidosAvaliacao.isNotEmpty) ...[
+                    _buildSectionTitle("Atenção: Avaliações Vencidas",
+                        Icons.warning_amber_rounded, Colors.orange),
+                    const SizedBox(height: 10),
+                    ...vencidosAvaliacao.map((p) => _buildCardAlerta(
+                        p,
+                        "Última: ${_formatDate(_dataUltimaAvaliacao[p.id]!)}",
+                        "Atualizar",
+                        Colors.orange,
+                        () => _navAvaliacao(p))),
+                    const SizedBox(height: 20),
+                  ],
 
-                  _buildSecaoTitulo(
-                    "Avaliações Pendentes",
-                    const Color(0xFF916DD5),
-                  ),
+                  // Pendentes (Alerta Roxo - Nunca feito)
+                  if (pendentesAvaliacao.isNotEmpty) ...[
+                    _buildSectionTitle("Avaliações Pendentes",
+                        Icons.accessibility_new, AppColors.roxo),
+                    const SizedBox(height: 10),
+                    ...pendentesAvaliacao.map((p) => _buildCardPendencia(
+                        p,
+                        "Nunca avaliado",
+                        "Criar",
+                        AppColors.roxo,
+                        () => _navAvaliacao(p))),
+                    const SizedBox(height: 20),
+                  ],
 
-                  if (_meusPacientes.any((p) => p.antropometria == null))
-                    ..._meusPacientes
-                        .where((p) => p.antropometria == null)
-                        .map((p) => _cardAvaliacaoPendente(p))
+                  // --- PLANOS ---
+
+                  if (pendentesPlano.isNotEmpty) ...[
+                    _buildSectionTitle("Planos Pendentes",
+                        Icons.restaurant_menu, AppColors.verde),
+                    const SizedBox(height: 10),
+                    ...pendentesPlano.map((p) => _buildCardPendencia(
+                        p,
+                        "Sem plano ativo",
+                        "Criar",
+                        AppColors.verde,
+                        () => _navPlano(p))),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // --- TODOS OS PACIENTES ---
+                  _buildSectionTitle(
+                      "Meus Pacientes", Icons.people, Colors.blue),
+                  const SizedBox(height: 10),
+                  if (_meusPacientes.isNotEmpty)
+                    ..._meusPacientes.map((p) => _buildCardPacienteResumo(p))
                   else
-                    _buildMensagem(
-                      "Todos os pacientes estão avaliados!",
-                      AppColors.roxo,
-                    ),
+                    const Center(
+                        child: Text("Nenhum paciente vinculado.",
+                            style: TextStyle(color: Colors.grey))),
 
-                  const Divider(),
-
-                  _buildSecaoTitulo(
-                    "Planos Pendentes",
-                    const Color(0xFF4CAF50),
-                  ),
-
-                  if (_meusPacientes.any((p) => _mapaPlanos[p.id] == null))
-                    ..._meusPacientes
-                        .where((p) => _mapaPlanos[p.id] == null)
-                        .map((p) => _cardPlanoPendente(p))
-                  else
-                    _buildMensagem(
-                      "Sem planos a pendentes!",
-                      AppColors.verdeEscuro,
-                    ),
-
-                  /*const Divider(),
-
-                   _buildSecaoTitulo(
-                    "-TESTE- Pacientes (${_meusPacientes.length})",
-                    AppColors.laranja,
-                  ),
-
-                  ..._meusPacientes.map((p) => _cardPacienteGeral(p)), */
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -321,272 +342,139 @@ class _NutricionistaHomeScreenState extends State<NutricionistaHomeScreen> {
     );
   }
 
-  final TextEditingController _idController = TextEditingController();
+  // --- WIDGETS ---
 
-  Widget _buildAdicionarPacienteInput() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: SizedBox(
-              height: 45,
-              child: TextField(
-                controller: _idController,
-                decoration: InputDecoration(
-                  hintText: "ID do paciente",
-                  hintStyle: const TextStyle(fontSize: 14),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 45,
-            child: ElevatedButton(
-              onPressed: _isLinking ? null : _vincularPaciente,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.laranja,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-              ),
-              child:
-                  _isLinking
-                      ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                      : const Text("Vincular", style: TextStyle(fontSize: 13)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSectionTitle(String title, IconData icon, Color color) {
+    return Row(
       children: [
-        RichText(
-          text: TextSpan(
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-            children: [
-              const TextSpan(text: "Olá, "),
-              TextSpan(
-                text: _nutricionista?.nome ?? "Nutri",
-                style: const TextStyle(color: Colors.orange),
-              ),
-            ],
-          ),
-        ),
-        Text("Pacientes ativos: ${_nutricionista?.pacientesIds.length ?? 0}"),
-        Text(
-          "CRN: ${_nutricionista?.crn ?? "N/A"}",
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Text(title,
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
       ],
     );
   }
 
-  Widget _cardAvaliacaoPendente(Paciente paciente) {
-    final antro = paciente.antropometria;
-
+  Widget _buildVincularInput() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            paciente.nome,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            antro == null
-                ? "Sem Avaliações"
-                : "Última Avaliação: ${antro.data}",
-            style: const TextStyle(
-              color: AppColors.roxo,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFAF87EF),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              icon: const Icon(Icons.accessibility_new, size: 18),
-              label: const Text("Adicionar Avaliação"),
-              onPressed: () {
-                if (paciente.id != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => NutricionistaAntropometriaScreen(
-                            pacienteId: paciente.id!,
-                          ),
-                    ),
-                  ).then((_) => _carregarDados());
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecaoTitulo(String t, Color c) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 15),
-    child: Text(
-      t,
-      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: c),
-    ),
-  );
-
-  /*  Widget _cardPacienteGeral(Paciente paciente) { //teste
-    final temAvaliacao = paciente.antropometria != null;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      elevation: 0,
-      color: Colors.grey[50],
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor:
-              temAvaliacao ? Colors.green[100] : Colors.orange[100],
-          child: Icon(
-            Icons.person,
-            color: temAvaliacao ? Colors.green : Colors.orange,
-          ),
-        ),
-        title: Text(
-          paciente.nome,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          temAvaliacao
-              ? "Última avaliação: ${paciente.antropometria!.data!.day}/${paciente.antropometria!.data!.month}"
-              : "Nenhuma avaliação registrada",
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // Navega para o histórico ou perfil do paciente
-          _abrirTestePlanoAlimentar(paciente.id!);
-        },
-      ),
-    );
-  }
- */
-  Widget _cardPlanoPendente(Paciente paciente) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            paciente.nome,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            "Sem Plano Alimentar Ativo",
-            style: TextStyle(
-              color: AppColors.verdeEscuro,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              icon: const Icon(Icons.restaurant_menu, size: 18),
-              label: const Text("Adicionar Plano Alimentar"),
-              onPressed: () {
-                _abrirTestePlanoAlimentar(
-                  paciente.id!,
-                ).then((_) => _carregarDados());
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMensagem(String mensagem, Color c) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
+          color: Colors.grey[100], borderRadius: AppStyles.borderButton),
       child: Row(
         children: [
-          Icon(Icons.check_circle, color: c),
-          const SizedBox(width: 12),
-          Text(
-            mensagem,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
+          Expanded(
+              child: TextField(
+                  controller: _idController,
+                  decoration: const InputDecoration(
+                      hintText: "ID do paciente",
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16)))),
+          ElevatedButton(
+              onPressed: _isLinking ? null : _vincularPaciente,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.laranja,
+                  shape: AppStyles.shapeButton,
+                  elevation: 0),
+              child: _isLinking
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Text("Vincular", style: TextStyle(color: Colors.white))),
+        ],
+      ),
+    );
+  }
+
+  // Card para Pendência (Nunca Feito)
+  Widget _buildCardPendencia(
+      Paciente p, String subtitle, String btnText, Color color, VoidCallback onTap) {
+    return _baseCard(p, subtitle, btnText, color, onTap, isWarning: false);
+  }
+
+  // Card para Vencido (Alerta)
+  Widget _buildCardAlerta(
+      Paciente p, String subtitle, String btnText, Color color, VoidCallback onTap) {
+    return _baseCard(p, subtitle, btnText, color, onTap, isWarning: true);
+  }
+
+  Widget _baseCard(Paciente p, String subtitle, String btnText, Color color,
+      VoidCallback onTap,
+      {required bool isWarning}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppStyles.borderButton,
+        border: Border.all(color: color.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+              color: color.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              if (isWarning)
+                const Icon(Icons.warning, color: Colors.orange, size: 20),
+              if (isWarning) const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p.nome,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(subtitle,
+                      style: TextStyle(
+                          color: isWarning ? Colors.orange[800] : color,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                shape: AppStyles.shapeButton,
+                minimumSize: const Size(70, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                elevation: 0),
+            child: Text(btnText,
+                style: const TextStyle(fontSize: 11, color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCardPacienteResumo(Paciente p) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppStyles.borderButton,
+          border: Border.all(color: Colors.grey.withOpacity(0.1))),
+      child: ListTile(
+        dense: true,
+        contentPadding: EdgeInsets.all(8),
+        leading: CircleAvatar(
+            backgroundColor: Colors.blue[50],
+            child: Text(p.nome[0].toUpperCase(),
+                style: const TextStyle(
+                    color: Colors.blue, fontWeight: FontWeight.bold))),
+        title:
+            Text(p.nome, style: const TextStyle(fontWeight: FontWeight.bold)),
+        trailing:
+            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+        onTap: () => _navPerfil(p),
       ),
     );
   }

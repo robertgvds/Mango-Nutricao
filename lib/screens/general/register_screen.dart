@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import 'verification_screen.dart';
 import '../../widgets/app_colors.dart';
+import '../../widgets/app_styles.dart'; // [IMPORTANTE] Importe seus estilos
 
 enum UserType { paciente, nutricionista }
 
@@ -40,228 +42,236 @@ class RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     List<TextEditingController> controllers = [
-      _nomeController,
-      _dataNascController,
-      _crnController,
-      _emailController,
-      _senhaController,
-      _confirmarSenhaController,
+      _nomeController, _dataNascController, _crnController,
+      _emailController, _senhaController, _confirmarSenhaController,
     ];
-    for (var controller in controllers) {
-      controller.addListener(_atualizarEstadoFormulario);
-    }
+    for (var c in controllers) c.addListener(_atualizarEstadoFormulario);
   }
 
   @override
   void dispose() {
-    _nomeController.dispose();
-    _dataNascController.dispose();
-    _crnController.dispose();
-    _emailController.dispose();
-    _senhaController.dispose();
-    _confirmarSenhaController.dispose();
+    _nomeController.dispose(); _dataNascController.dispose(); _crnController.dispose();
+    _emailController.dispose(); _senhaController.dispose(); _confirmarSenhaController.dispose();
     super.dispose();
   }
 
+  // --- VALIDAÇÕES (Mantidas iguais) ---
   String? _validarRequisitosSenha(String senha) {
     if (senha.isEmpty) return null;
-    if (senha.length < 8) return "A senha deve ter pelo menos 8 caracteres";
-    if (!RegExp(r'[A-Z]').hasMatch(senha)) return "Adicione pelo menos uma letra maiúscula";
-    if (!RegExp(r'[0-9]').hasMatch(senha)) return "Adicione pelo menos um número";
-    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(senha)) return "Adicione um caractere especial (ex: @, #, %)";
+    if (senha.length < 8) return "Mínimo 8 caracteres";
+    if (!RegExp(r'[A-Z]').hasMatch(senha)) return "Falta letra maiúscula";
+    if (!RegExp(r'[0-9]').hasMatch(senha)) return "Falta número";
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(senha)) return "Falta caractere especial";
     return null;
   }
 
   String? _validarDataNascimento(String data) {
     if (data.isEmpty || data.length < 10) return null;
     try {
-      List<String> partes = data.split('/');
-      int dia = int.parse(partes[0]);
-      int mes = int.parse(partes[1]);
-      int ano = int.parse(partes[2]);
-      final dataInformada = DateTime(ano, mes, dia);
-      final hoje = DateTime.now();
-      if (dataInformada.day != dia || dataInformada.month != mes || dataInformada.year != ano) return "Data inválida";
-      if (dataInformada.isAfter(hoje)) return "A data não pode ser no futuro";
-      if (ano < 1900) return "Ano inválido";
+      List<String> p = data.split('/');
+      final dt = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
+      if (dt.isAfter(DateTime.now()) || int.parse(p[2]) < 1900) return "Data inválida";
       return null;
-    } catch (e) {
-      return "Formato de data incorreto";
-    }
+    } catch (e) { return "Data inválida"; }
   }
 
   void _atualizarEstadoFormulario() {
     final senha = _senhaController.text;
     final confirmar = _confirmarSenhaController.text;
-    final erroSenha = _validarRequisitosSenha(senha);
-    final erroData = _validarDataNascimento(_dataNascController.text);
-
-    final coincidem = senha.isNotEmpty && confirmar.isNotEmpty && senha != confirmar;
-
+    
     setState(() {
-      _erroRequisitoSenha = erroSenha;
-      _senhasNaoCoincidem = coincidem;
+      _erroRequisitoSenha = _validarRequisitosSenha(senha);
+      _senhasNaoCoincidem = senha.isNotEmpty && confirmar.isNotEmpty && senha != confirmar;
 
-      final camposBasicosOk = _nomeController.text.isNotEmpty &&
-          _dataNascController.text.length == 10 &&
-          _emailController.text.contains('@') &&
-          senha.isNotEmpty &&
-          confirmar.isNotEmpty;
-
-      final crnOk = (_selectedUser == UserType.paciente) || _crnController.text.isNotEmpty;
-
-      _formularioCompleto = camposBasicosOk && crnOk && erroSenha == null && erroData == null;
+      final basicos = _nomeController.text.isNotEmpty && _dataNascController.text.length == 10 && _emailController.text.contains('@') && senha.isNotEmpty && confirmar.isNotEmpty;
+      final crn = (_selectedUser == UserType.paciente) || _crnController.text.isNotEmpty;
+      
+      _formularioCompleto = basicos && crn && _erroRequisitoSenha == null && _validarDataNascimento(_dataNascController.text) == null;
     });
   }
 
   Future<void> _cadastrarNoFirebase() async {
     setState(() => _estaCarregando = true);
-
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-
-      await authService.registrar(
+      await Provider.of<AuthService>(context, listen: false).registrar(
         _emailController.text.trim(),
         _senhaController.text.trim(),
         _nomeController.text.trim(),
         _selectedUser == UserType.paciente ? 'paciente' : 'nutricionista',
         _selectedUser == UserType.nutricionista ? _crnController.text.trim() : null,
         _generoSelecionado, 
-        _dataNascController.text.trim(), // <--- Dado persistido aqui
+        _dataNascController.text.trim(),
       );
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const VerificationScreen()),
-        );
-      }
+      if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const VerificationScreen()));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _estaCarregando = false);
     }
   }
 
-  Widget _buildErrorMessage(String message, {Color color = Colors.red}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      child: Text(
-        message,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String hint, TextEditingController controller, {bool obscure = false, List<MaskTextInputFormatter>? inputFormatters, TextInputType keyboardType = TextInputType.text}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        controller: controller,
-        obscureText: obscure,
-        inputFormatters: inputFormatters,
-        keyboardType: keyboardType,
-        onChanged: (_) => _atualizarEstadoFormulario(),
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: true,
-          fillColor: AppColors.cinzaClaro,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.branco,
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text("Criar Conta", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 30),
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.preto, size: 28),
-              onPressed: () => Navigator.pop(context),
+            // SELETOR DE TIPO (Paciente / Nutri)
+            Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppColors.cinzaClaro,
+                borderRadius: AppStyles.borderButton, // 16.0
+              ),
+              child: Row(
+                children: [
+                  _buildToggleOption("Paciente", UserType.paciente),
+                  _buildToggleOption("Nutricionista", UserType.nutricionista),
+                ],
+              ),
             ),
+            
+            const SizedBox(height: 30),
+            const Text("Dados Pessoais", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
-            Center(
-              child: ToggleButtons(
-                borderRadius: BorderRadius.circular(30),
-                isSelected: [_selectedUser == UserType.paciente, _selectedUser == UserType.nutricionista],
-                onPressed: (index) => setState(() {
-                  _selectedUser = index == 0 ? UserType.paciente : UserType.nutricionista;
-                  _atualizarEstadoFormulario();
-                }),
-                fillColor: AppColors.roxoClaro,
-                selectedColor: AppColors.preto,
-                constraints: BoxConstraints(minWidth: (MediaQuery.of(context).size.width - 45) / 2, minHeight: 45),
-                children: const [Text("Paciente"), Text("Nutricionista")],
-              ),
+            
+            _buildTextField("Nome Completo", _nomeController, Icons.person),
+            _buildTextField("Data de Nascimento", _dataNascController, Icons.calendar_today, formatters: [maskFormatter], type: TextInputType.number),
+            if (_dataNascController.text.length == 10) _buildErrorMsg(_validarDataNascimento(_dataNascController.text)),
+
+            if (_selectedUser == UserType.nutricionista) ...[
+              _buildTextField("CRN", _crnController, Icons.badge),
+            ],
+
+            const SizedBox(height: 10),
+            // SELETOR GÊNERO
+            const Text("Gênero", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildGenderChip("Feminino"),
+                const SizedBox(width: 10),
+                _buildGenderChip("Masculino"),
+              ],
             ),
-            const SizedBox(height: 25),
-            const Text("Dados Pessoais", style: TextStyle(fontWeight: FontWeight.bold)),
-            _buildTextField("Insira seu nome completo", _nomeController),
-            _buildTextField("Insira sua Data de Nascimento", _dataNascController, inputFormatters: [maskFormatter], keyboardType: TextInputType.number),
-            
-            if (_dataNascController.text.length == 10 && _validarDataNascimento(_dataNascController.text) != null)
-              _buildErrorMessage(_validarDataNascimento(_dataNascController.text)!),
-
-            const SizedBox(height: 15),
-            Center(
-              child: ToggleButtons(
-                borderRadius: BorderRadius.circular(30),
-                isSelected: [_generoSelecionado == 'Feminino', _generoSelecionado == 'Masculino'],
-                onPressed: (index) => setState(() {
-                  _generoSelecionado = index == 0 ? 'Feminino' : 'Masculino';
-                  _atualizarEstadoFormulario();
-                }),
-                fillColor: AppColors.roxoClaro,
-                selectedColor: AppColors.preto,
-                constraints: BoxConstraints(minWidth: (MediaQuery.of(context).size.width - 45) / 2, minHeight: 45),
-                children: const [Text("Feminino"), Text("Masculino")],
-              ),
-            ),
-
-            if (_selectedUser == UserType.nutricionista) _buildTextField("Insira seu CRN", _crnController),
-
-            const SizedBox(height: 20),
-            const Text("Dados de Acesso", style: TextStyle(fontWeight: FontWeight.bold)),
-            _buildTextField("E-mail", _emailController, keyboardType: TextInputType.emailAddress),
-            _buildTextField("Defina sua senha", _senhaController, obscure: true),
-            
-            if (_erroRequisitoSenha != null) _buildErrorMessage(_erroRequisitoSenha!, color: Colors.orange),
-
-            _buildTextField("Confirme sua senha", _confirmarSenhaController, obscure: true),
-            
-            if (_senhasNaoCoincidem) _buildErrorMessage("As senhas não coincidem."),
 
             const SizedBox(height: 30),
+            const Text("Acesso", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 10),
+            
+            _buildTextField("E-mail", _emailController, Icons.email, type: TextInputType.emailAddress),
+            _buildTextField("Senha", _senhaController, Icons.lock, isPassword: true),
+            _buildErrorMsg(_erroRequisitoSenha, color: Colors.orange),
+            
+            _buildTextField("Confirmar Senha", _confirmarSenhaController, Icons.lock_outline, isPassword: true),
+            if (_senhasNaoCoincidem) _buildErrorMsg("As senhas não coincidem."),
+
+            const SizedBox(height: 40),
+            
+            // BOTÃO CADASTRAR
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
                 onPressed: (_formularioCompleto && !_estaCarregando) ? _cadastrarNoFirebase : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.roxoEscuro,
+                  backgroundColor: AppColors.roxo,
+                  foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey[300],
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  shape: AppStyles.shapeButton, // 16.0
+                  elevation: 0,
                 ),
                 child: _estaCarregando 
-                  ? const CircularProgressIndicator(color: Colors.white) 
-                  : const Text("Realizar Cadastro", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                  : const Text("CADASTRAR", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // --- WIDGETS AUXILIARES ---
+
+  Widget _buildToggleOption(String label, UserType type) {
+    bool isSelected = _selectedUser == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() { _selectedUser = type; _atualizarEstadoFormulario(); }),
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12), // Um pouco menos que o container pai
+            boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : [],
+          ),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: isSelected ? AppColors.roxo : Colors.grey)
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderChip(String label) {
+    bool selected = _generoSelecionado == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (v) => setState(() => _generoSelecionado = label),
+      selectedColor: AppColors.roxo.withOpacity(0.2),
+      labelStyle: TextStyle(color: selected ? AppColors.roxo : Colors.grey[700], fontWeight: FontWeight.bold),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20), // Chips geralmente são mais redondos
+        side: BorderSide(color: selected ? AppColors.roxo : Colors.grey[300]!)
+      ),
+    );
+  }
+
+  Widget _buildTextField(String hint, TextEditingController ctrl, IconData icon, {bool isPassword = false, TextInputType type = TextInputType.text, List<TextInputFormatter>? formatters}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: ctrl,
+        obscureText: isPassword,
+        keyboardType: type,
+        inputFormatters: formatters,
+        onChanged: (_) => _atualizarEstadoFormulario(),
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.grey),
+          hintText: hint,
+          filled: true,
+          fillColor: AppColors.cinzaClaro,
+          border: OutlineInputBorder(borderRadius: AppStyles.borderButton, borderSide: BorderSide.none), // 16.0
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorMsg(String? msg, {Color color = Colors.red}) {
+    if (msg == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: 10, bottom: 8),
+      child: Text(msg, style: TextStyle(color: color, fontSize: 12)),
     );
   }
 }

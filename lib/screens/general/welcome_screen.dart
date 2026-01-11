@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../widgets/app_colors.dart'; 
+import '../../widgets/app_colors.dart';
+import '../../widgets/app_styles.dart'; // Importando seus estilos padronizados
 import 'login_screen.dart';
 import 'register_screen.dart';
 
@@ -18,21 +19,28 @@ class InitialScreen extends StatelessWidget {
             children: [
               const Spacer(),
               
-              // Logo da Manga com Fundo Roxo (Baseado na sua imagem)
+              // --- LOGO COM SOMBRA SUAVE ---
               Center(
                 child: Container(
                   width: 200,
                   height: 200,
-                  decoration: const BoxDecoration(
-                    color: AppColors.roxoClaro, 
+                  decoration: BoxDecoration(
+                    color: AppColors.roxo.withOpacity(0.1), // Fundo Roxo Claro
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.roxo.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      )
+                    ],
                   ),
                   child: ClipOval(
                     child: Transform.scale(
-                      scale: 1.2, // 1.0 é o tamanho normal. 1.2 aumenta em 20%
+                      scale: 1.0, 
                       child: Image.asset(
                         'assets/imagem_logo_manga.png',
-                        fit: BoxFit.contain,
+                        fit: BoxFit.scaleDown,
                       ),
                     ),
                   ),
@@ -41,33 +49,32 @@ class InitialScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
 
-              // Título
+              // --- TÍTULO E SUBTÍTULO ---
               const Text(
-                "Mango - NutriApp",
+                "Mango Nutri",
                 style: TextStyle(
-                  fontSize: 32,
+                  fontSize: 36,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A0633), // Tom de roxo escuro da sua imagem
+                  color: AppColors.roxo, // Usando a cor do tema
+                  letterSpacing: -0.5,
                 ),
               ),
               
-              const SizedBox(height: 15),
+              const SizedBox(height: 12),
 
-              // Texto de Boas-vindas
-              const Text(
-                "Bem-vindo ao Mango! \n\nEstamos prontos para iniciar seu acompanhamento nutricional!",
+              Text(
+                "Seu acompanhamento nutricional\ninteligente e simplificado.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                  height: 1.4,
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                  height: 1.5,
                 ),
               ),
 
               const Spacer(),
 
-              // Botão Entrar
+              // --- BOTÃO ENTRAR ---
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -79,16 +86,16 @@ class InitialScreen extends StatelessWidget {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2DBB54), // Verde da imagem
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 0,
+                    backgroundColor: AppColors.verde, // Verde do tema
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    shadowColor: AppColors.verde.withOpacity(0.4),
+                    // PADRÃO: Usando o shape definido no AppStyles (radius 16)
+                    shape: AppStyles.shapeButton, 
                   ),
                   child: const Text(
                     "Entrar",
                     style: TextStyle(
-                      color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -96,9 +103,9 @@ class InitialScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 16),
 
-              // Botão Cadastrar (Outlined)
+              // --- BOTÃO CADASTRAR ---
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -110,15 +117,14 @@ class InitialScreen extends StatelessWidget {
                     );
                   },
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF2DBB54), width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    foregroundColor: AppColors.verde,
+                    side: const BorderSide(color: AppColors.verde, width: 2),
+                    // PADRÃO: Usando o shape definido no AppStyles (radius 16)
+                    shape: AppStyles.shapeButton,
                   ),
                   child: const Text(
-                    "Cadastrar",
+                    "Criar Conta",
                     style: TextStyle(
-                      color: Color(0xFF2DBB54),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),

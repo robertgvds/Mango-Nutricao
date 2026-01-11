@@ -1,13 +1,10 @@
-import 'package:app/screens/general/welcome_screen.dart';
-import 'package:app/screens/nutricionista/nutricionista_navigation.dart';
-import 'package:app/screens/paciente/paciente_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import '../screens/general/login_screen.dart'; 
-import '../screens/paciente/paciente_home_screen.dart';  
-import '../screens/nutricionista/nutricionista_home_screen.dart'; // Crie ou importe esta tela
 import '../screens/general/verification_screen.dart';
+import '../screens/general/welcome_screen.dart';
+import '../screens/nutricionista/nutricionista_navigation.dart';
+import '../screens/paciente/paciente_navigation.dart';
 
 class AuthCheck extends StatelessWidget {
   const AuthCheck({super.key});

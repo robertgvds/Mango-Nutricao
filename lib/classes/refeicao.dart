@@ -15,13 +15,21 @@ class Refeicao {
 
   // --- Totais da Refeição (Calculados Dinamicamente) ---
   
-  double get totalCalorias => alimentos.fold(0, (sum, item) => sum + item.totalCalorias);
+  double get totalCalorias => alimentos.fold(0, (sum, item) => sum + item.calorias);
   
-  double get totalProteinas => alimentos.fold(0, (sum, item) => sum + item.totalProteinas);
+  double get totalProteinas => alimentos.fold(0, (sum, item) => sum + item.proteinas);
   
-  double get totalCarboidratos => alimentos.fold(0, (sum, item) => sum + item.totalCarboidratos);
+  double get totalCarboidratos => alimentos.fold(0, (sum, item) => sum + item.carboidratos);
   
-  double get totalGorduras => alimentos.fold(0, (sum, item) => sum + item.totalGorduras);
+  double get totalGorduras => alimentos.fold(0, (sum, item) => sum + item.gorduras);
+
+  double get totalFibras => alimentos.fold(0, (sum, item) => sum + item.fibras);
+  double get totalCalcio => alimentos.fold(0, (sum, item) => sum + item.calcio);
+  double get totalMagnesio => alimentos.fold(0, (sum, item) => sum + item.magnesio);
+  double get totalFerro => alimentos.fold(0, (sum, item) => sum + item.ferro);
+  double get totalPotassio => alimentos.fold(0, (sum, item) => sum + item.potassio);
+  double get totalVitC => alimentos.fold(0, (sum, item) => sum + item.vitC);
+  double get totalVitA => alimentos.fold(0, (sum, item) => sum + item.vitA);
 
   // --- Serialização para o Firebase ---
 

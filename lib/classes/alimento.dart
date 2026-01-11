@@ -6,25 +6,38 @@ class Alimento {
   final double proteinas;
   final double carboidratos;
   final double gorduras;
-  double quantidade; // Em gramas
+  double  quantidade;
   String unidade;
+  
+  // Novos campos
+  final double fibras;
+  final double calcio;
+  final double magnesio;
+  final double ferro;
+  final double potassio;
+  final double vitC;
+  final double vitA; // Geralmente RAE
 
   Alimento({
     required this.id,
     required this.nome,
-    this.categoria = 'Geral',
+    required this.categoria,
     required this.calorias,
     required this.proteinas,
     required this.carboidratos,
     required this.gorduras,
     this.quantidade = 100,
     this.unidade = 'g',
+    
+    // Inicializando com padrão 0.0 caso não venha
+    this.fibras = 0.0,
+    this.calcio = 0.0,
+    this.magnesio = 0.0,
+    this.ferro = 0.0,
+    this.potassio = 0.0,
+    this.vitC = 0.0,
+    this.vitA = 0.0,
   });
-
-  double get totalCalorias => (calorias * quantidade) / 100;
-  double get totalProteinas => (proteinas * quantidade) / 100;
-  double get totalCarboidratos => (carboidratos * quantidade) / 100;
-  double get totalGorduras => (gorduras * quantidade) / 100;
 
   Map<String, dynamic> toMap() {
     return {
@@ -37,6 +50,15 @@ class Alimento {
       'gorduras': gorduras,
       'quantidade': quantidade,
       'unidade': unidade,
+      
+      // Novos campos
+      'fibras': fibras,
+      'calcio': calcio,
+      'magnesio': magnesio,
+      'ferro': ferro,
+      'potassio': potassio,
+      'vitC': vitC,
+      'vitA': vitA,
     };
   }
 
@@ -52,6 +74,14 @@ class Alimento {
       proteinas: (map['proteinas'] as num?)?.toDouble() ?? 0.0,
       carboidratos: (map['carboidratos'] as num?)?.toDouble() ?? 0.0,
       gorduras: (map['gorduras'] as num?)?.toDouble() ?? 0.0,
+
+      fibras: (map['fibras'] as num?)?.toDouble() ?? 0.0,
+      calcio: (map['calcio'] as num?)?.toDouble() ?? 0.0,
+      magnesio: (map['magnesio'] as num?)?.toDouble() ?? 0.0,
+      ferro: (map['ferro'] as num?)?.toDouble() ?? 0.0,
+      potassio: (map['potassio'] as num?)?.toDouble() ?? 0.0,
+      vitC: (map['vitC'] as num?)?.toDouble() ?? 0.0,
+      vitA: (map['vitA'] as num?)?.toDouble() ?? 0.0 ,
       
       quantidade: (map['quantidade'] as num?)?.toDouble() ?? 100.0,
       unidade: map['unidade']?.toString() ?? 'g',

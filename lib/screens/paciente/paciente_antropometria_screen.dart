@@ -1,4 +1,3 @@
-import 'package:app/services/auth_service.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:fl_chart/fl_chart.dart'; // Gráficos na tela (Flutter)
 import 'package:flutter/material.dart';
@@ -10,7 +9,10 @@ import 'package:printing/printing.dart';
 
 import '../../classes/antropometria.dart';
 import '../../database/antropometria_repository.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/app_colors.dart';
+import '../../widgets/app_styles.dart';
+
 
 class AntropometriaVisualizacaoPage extends StatefulWidget {
   final String pacienteId;
@@ -136,6 +138,7 @@ class _AntropometriaVisualizacaoPageState
                   _buildPdfRow('Massa Corporal', '${_ultimaAvaliacao!.massaCorporal?.toStringAsFixed(1)} kg'),
                   _buildPdfRow('Massa Gorda', '${_ultimaAvaliacao!.massaGordura?.toStringAsFixed(1)} kg'),
                   _buildPdfRow('% de Gordura', '${_ultimaAvaliacao!.percentualGordura?.toStringAsFixed(1)} %'),
+                  _buildPdfRow('Massa Muscular', '${_ultimaAvaliacao!.massaMuscular?.toStringAsFixed(1)} kg'),
                   _buildPdfRow('IMC', '${_ultimaAvaliacao!.imc?.toStringAsFixed(1)} kg/m²'),
                   _buildPdfRow('CMB', '${_ultimaAvaliacao!.cmb?.toStringAsFixed(1)} cm'),
                   _buildPdfRow('RCQ', '${_ultimaAvaliacao!.relacaoCinturaQuadril?.toStringAsFixed(2)}'),
@@ -178,6 +181,9 @@ class _AntropometriaVisualizacaoPageState
 
       final dMassaGorda = extractData((a) => a.massaGordura);
       if (dMassaGorda.isNotEmpty) charts.add(_buildPdfChart("Massa Gorda (kg)", dMassaGorda, PdfColors.red, getLabelX));
+
+      final dMassaMuscular = extractData((a) => a.massaMuscular);
+      if (dMassaMuscular.isNotEmpty) charts.add(_buildPdfChart("Massa Muscular (kg)", dMassaMuscular, PdfColors.teal, getLabelX));
 
       final dImc = extractData((a) => a.imc);
       if (dImc.isNotEmpty) charts.add(_buildPdfChart("IMC", dImc, PdfColors.blue, getLabelX));
@@ -378,6 +384,7 @@ class _AntropometriaVisualizacaoPageState
               const SizedBox(height: 10),
               _buildItemIntervalo("IMC", "18.5 - 24.9 kg/m²"),
               _buildItemIntervalo("% Gordura", isFem ? "18% - 28%" : "10% - 20%"),
+              _buildItemIntervalo("Massa Muscular", isFem ? "20 - 30 kg" : "30 - 40 kg"),
               _buildItemIntervalo("RCQ", isFem ? "0.70 - 0.85" : "0.80 - 0.95"),
               _buildItemIntervalo("CMB", isFem ? "20 - 29 cm" : "23 - 34 cm"),
               
@@ -387,6 +394,7 @@ class _AntropometriaVisualizacaoPageState
               _buildItemEscala("Peso Total", "até 150 kg"),
               _buildItemEscala("Massa Gorda", "até 50 kg"),
               _buildItemEscala("Gordura %", "até 50%"),
+              _buildItemEscala("Massa Muscular", "até 80 kg"),
               _buildItemEscala("IMC", "até 50 kg/m²"),
               _buildItemEscala("CMB", "até 60 cm"),
               _buildItemEscala("RCQ", "até 1.2"),
@@ -473,16 +481,20 @@ class _AntropometriaVisualizacaoPageState
                     child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _exportarPDF,
-                        icon: const Icon(Icons.picture_as_pdf, size: 20),
-                        label: const Text('Exportar como PDF'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.roxo,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
+  onPressed: _exportarPDF,
+  icon: const Icon(Icons.picture_as_pdf, size: 20),
+  label: const Text(
+    'Exportar como PDF',
+    style: TextStyle(fontWeight: FontWeight.bold), // Texto em negrito
+  ),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.white,
+    foregroundColor: AppColors.roxo,
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    shape: AppStyles.shapeButton, // Padronizado (Radius 16)
+    elevation: 2, // Sombra suave para destacar o branco
+  ),
+),
                     ),
                   ),
                 ),
@@ -529,6 +541,7 @@ class _AntropometriaVisualizacaoPageState
                             _buildIndicadorBarra('Massa Corporal Total', _ultimaAvaliacao!.massaCorporal, 'kg', _ultimaAvaliacao!.classMassaCorporal, maxVal: 150.0),
                             _buildIndicadorBarra('Massa de Gordura', _ultimaAvaliacao!.massaGordura, 'kg', _ultimaAvaliacao!.classMassaGordura, maxVal: 50.0),
                             _buildIndicadorBarra('Percentual de Gordura', _ultimaAvaliacao!.percentualGordura, '%', _ultimaAvaliacao!.classPercentualGordura, maxVal: 50.0),
+                            _buildIndicadorBarra('Massa Muscular', _ultimaAvaliacao!.massaMuscular, 'kg', _ultimaAvaliacao!.classMassaMuscular, maxVal: 80.0),
                             _buildIndicadorBarra('IMC', _ultimaAvaliacao!.imc, '', _ultimaAvaliacao!.classImc, maxVal: 50.0),
                             _buildIndicadorBarra('CMB (Braço)', _ultimaAvaliacao!.cmb, ' cm', _ultimaAvaliacao!.classCmb, maxVal: 60.0),
                             _buildIndicadorBarra('Relação C/Q', _ultimaAvaliacao!.relacaoCinturaQuadril, '', _ultimaAvaliacao!.classRcq, maxVal: 1.2),
@@ -556,6 +569,7 @@ class _AntropometriaVisualizacaoPageState
                             _buildGraficoCard("Peso (kg)", _historico, (a) => a.massaCorporal ?? 0, AppColors.roxo, 'kg'),
                             _buildGraficoCard("Gordura Corporal (%)", _historico, (a) => a.percentualGordura ?? 0, const Color(0xFFFF7043), '%'),
                             _buildGraficoCard("Massa Gorda (kg)", _historico, (a) => a.massaGordura ?? 0, const Color(0xFFFF7043), 'kg'),
+                            _buildGraficoCard("Massa Muscular (kg)", _historico, (a) => a.massaMuscular ?? 0, const Color(0xFF4CAF50), 'kg'),
                             _buildGraficoCard("IMC (kg/m²)", _historico, (a) => a.imc ?? 0, const Color(0xFF5E6EE6), ''),
                             _buildGraficoCard("CMB (cm)", _historico, (a) => a.cmb ?? 0, const Color(0xFF4CAF50), 'cm'),
                             _buildGraficoCard("RCQ", _historico, (a) => a.relacaoCinturaQuadril ?? 0, const Color(0xFFE91E63), ''),
