@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import 'verification_screen.dart'; // Garanta que o caminho está correto
+import 'verification_screen.dart';
 import '../../widgets/app_colors.dart';
 
 enum UserType { paciente, nutricionista }
@@ -16,6 +16,7 @@ class RegisterScreen extends StatefulWidget {
 
 class RegisterScreenState extends State<RegisterScreen> {
   UserType _selectedUser = UserType.paciente;
+  String _generoSelecionado = 'Feminino'; // Valor padrão para o gênero
   bool _estaCarregando = false;
 
   final _nomeController = TextEditingController();
@@ -38,10 +39,13 @@ class RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    // Adiciona listeners para validação em tempo real em todos os campos
     List<TextEditingController> controllers = [
-      _nomeController, _dataNascController, _crnController,
-      _emailController, _senhaController, _confirmarSenhaController,
+      _nomeController,
+      _dataNascController,
+      _crnController,
+      _emailController,
+      _senhaController,
+      _confirmarSenhaController,
     ];
     for (var controller in controllers) {
       controller.addListener(_atualizarEstadoFormulario);
@@ -59,7 +63,6 @@ class RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // --- MÉTODOS DE VALIDAÇÃO ---
   String? _validarRequisitosSenha(String senha) {
     if (senha.isEmpty) return null;
     if (senha.length < 8) return "A senha deve ter pelo menos 8 caracteres";
@@ -92,13 +95,13 @@ class RegisterScreenState extends State<RegisterScreen> {
     final confirmar = _confirmarSenhaController.text;
     final erroSenha = _validarRequisitosSenha(senha);
     final erroData = _validarDataNascimento(_dataNascController.text);
-    
+
     final coincidem = senha.isNotEmpty && confirmar.isNotEmpty && senha != confirmar;
 
     setState(() {
       _erroRequisitoSenha = erroSenha;
       _senhasNaoCoincidem = coincidem;
-      
+
       final camposBasicosOk = _nomeController.text.isNotEmpty &&
           _dataNascController.text.length == 10 &&
           _emailController.text.contains('@') &&
@@ -113,27 +116,25 @@ class RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _cadastrarNoFirebase() async {
     setState(() => _estaCarregando = true);
-    
+
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      
-      // Envia os dados para o Firebase Auth + Realtime Database
+
       await authService.registrar(
         _emailController.text.trim(),
         _senhaController.text.trim(),
         _nomeController.text.trim(),
         _selectedUser == UserType.paciente ? 'paciente' : 'nutricionista',
         _selectedUser == UserType.nutricionista ? _crnController.text.trim() : null,
+        _generoSelecionado, // Passando o gênero selecionado para o serviço
       );
 
       if (mounted) {
-        // NAVEGAÇÃO IMEDIATA: Vai para a tela de verificação logo após o sucesso
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const VerificationScreen()),
         );
       }
-      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -145,7 +146,6 @@ class RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // --- WIDGETS DE DESIGN (DESIGN ORIGINAL) ---
   Widget _buildErrorMessage(String message, {Color color = Colors.red}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -164,7 +164,7 @@ class RegisterScreenState extends State<RegisterScreen> {
         obscureText: obscure,
         inputFormatters: inputFormatters,
         keyboardType: keyboardType,
-        onChanged: (_) => _atualizarEstadoFormulario(), // Resposta visual imediata
+        onChanged: (_) => _atualizarEstadoFormulario(),
         decoration: InputDecoration(
           hintText: hint,
           filled: true,
@@ -213,8 +213,27 @@ class RegisterScreenState extends State<RegisterScreen> {
             if (_dataNascController.text.length == 10 && _validarDataNascimento(_dataNascController.text) != null)
               _buildErrorMessage(_validarDataNascimento(_dataNascController.text)!),
 
+            // CAMPO GÊNERO (Mesmo design do ToggleButtons acima)
+            const SizedBox(height: 15),
+            const Text("Gênero", style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Center(
+              child: ToggleButtons(
+                borderRadius: BorderRadius.circular(30),
+                isSelected: [_generoSelecionado == 'Feminino', _generoSelecionado == 'Masculino'],
+                onPressed: (index) => setState(() {
+                  _generoSelecionado = index == 0 ? 'Feminino' : 'Masculino';
+                  _atualizarEstadoFormulario();
+                }),
+                fillColor: AppColors.roxoClaro,
+                selectedColor: AppColors.preto,
+                constraints: BoxConstraints(minWidth: (MediaQuery.of(context).size.width - 45) / 2, minHeight: 45),
+                children: const [Text("Feminino"), Text("Masculino")],
+              ),
+            ),
+
             if (_selectedUser == UserType.nutricionista) _buildTextField("Insira seu CRN", _crnController),
-            
+
             const SizedBox(height: 20),
             const Text("Dados de Acesso", style: TextStyle(fontWeight: FontWeight.bold)),
             _buildTextField("E-mail", _emailController, keyboardType: TextInputType.emailAddress),
@@ -225,7 +244,7 @@ class RegisterScreenState extends State<RegisterScreen> {
             _buildTextField("Confirme sua senha", _confirmarSenhaController, obscure: true),
             
             if (_senhasNaoCoincidem) _buildErrorMessage("As senhas não coincidem."),
-            
+
             const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
