@@ -48,7 +48,7 @@ class AuthService extends ChangeNotifier {
     });
   }
 
-  // Busca Nome, Tipo e CRN no Realtime Database
+  // Busca Nome, Tipo, Gênero e CRN no Realtime Database
   Future<void> carregarDadosUsuario() async {
     if (usuario == null) return;
     try {
@@ -59,7 +59,6 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       debugPrint("Erro ao carregar dados do banco: $e");
     } finally {
-      // Garante que o carregamento termina mesmo em caso de erro no catch
       _estaCarregando = false;
       notifyListeners();
     }
@@ -76,23 +75,34 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // Registro Completo (Auth + Database)
-  Future<void> registrar(String email, String senha, String nome, String tipo, String? crn) async {
+  // Registro Completo (Auth + Database) - ATUALIZADO COM GÊNERO
+  Future<void> registrar(
+    String email, 
+    String senha, 
+    String nome, 
+    String tipo, 
+    String? crn, 
+    String genero, // <--- Parâmetro adicionado
+  ) async {
     try {
+      // 1. Cria o usuário no Firebase Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: senha,
       );
 
+      // 2. Salva os dados no Realtime Database
       if (userCredential.user != null) {
         await _db.ref('usuarios/${userCredential.user!.uid}').set({
           'nome': nome,
           'tipo': tipo,
           'crn': crn, 
+          'genero': genero, // <--- Salva no banco de dados
           'email': email,
           'uid': userCredential.user!.uid,
         });
         
+        // 3. Envia e-mail de verificação
         await userCredential.user!.sendEmailVerification();
       }
     } on FirebaseAuthException catch (e) {

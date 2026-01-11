@@ -1,4 +1,5 @@
 import 'package:app/services/auth_service.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -25,6 +26,7 @@ class _AntropometriaVisualizacaoPageState
   Antropometria? _ultimaAvaliacao;
   List<Antropometria> _historico = [];
   bool _isLoading = true;
+  String _generoPaciente = 'Masculino';
 
   @override
   void initState() {
@@ -33,62 +35,97 @@ class _AntropometriaVisualizacaoPageState
   }
 
   Future<void> _carregarDados() async {
-    final historico = await _repository.buscarHistorico(widget.pacienteId);
+    setState(() => _isLoading = true);
 
-    if (historico.isNotEmpty) {
-      historico.sort((a, b) =>
-          (a.data ?? DateTime(2000)).compareTo(b.data ?? DateTime(2000)));
+    try {
+      final userSnapshot = await FirebaseDatabase.instance
+          .ref('usuarios/${widget.pacienteId}')
+          .get();
 
-      _ultimaAvaliacao = historico.last;
-    } else {
-      _ultimaAvaliacao = null;
-    }
+      if (userSnapshot.exists) {
+        final dadosUser = userSnapshot.value as Map;
+        _generoPaciente = dadosUser['genero'] ?? 'Masculino';
+      }
 
-    if (mounted) {
-      setState(() {
-        _historico = historico;
-        _isLoading = false;
-      });
+      final historico = await _repository.buscarHistorico(widget.pacienteId);
+
+      if (historico.isNotEmpty) {
+        historico.sort((a, b) =>
+            (a.data ?? DateTime(2000)).compareTo(b.data ?? DateTime(2000)));
+
+        _ultimaAvaliacao = historico.last;
+      } else {
+        _ultimaAvaliacao = null;
+      }
+
+      if (mounted) {
+        setState(() {
+          _historico = historico;
+        });
+      }
+    } catch (e) {
+      debugPrint("Erro: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _mostrarLegenda(BuildContext context) {
+    bool isFem = _generoPaciente == 'Feminino';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Entenda os Gráficos",
-            style: TextStyle(
-                color: AppColors.roxo, fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Entenda os Gráficos",
+                style: TextStyle(
+                    color: AppColors.roxo, fontWeight: FontWeight.bold)),
+            Text("Referências para: $_generoPaciente",
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Classificação (Cores):",
+              const Text("Legenda de Cores:",
                   style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              _buildItemLegendaDialog("Abaixo", const Color(0xFF5E6EE6),
-                  "Inferior ao recomendado."),
-              const SizedBox(height: 8),
-              _buildItemLegendaDialog("Ideal", const Color(0xFF4CAF50),
-                  "Faixa saudável."),
-              const SizedBox(height: 8),
-              _buildItemLegendaDialog("Acima", const Color(0xFFFF7043),
-                  "Superior ao recomendado."),
-              const Divider(height: 24),
-              const Text("Escala das Barras (Teto Visual):",
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLegendaItemCor("Abaixo", const Color(0xFF5E6EE6)),
+                  _buildLegendaItemCor("Ideal", const Color(0xFF4CAF50)),
+                  _buildLegendaItemCor("Acima", const Color(0xFFFF7043)),
+                ],
+              ),
+              const Divider(height: 30),
+              const Text("Intervalos Saudáveis (Ideal):",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 10),
+              _buildItemIntervalo("IMC", "18.5 - 24.9 kg/m²"),
+              _buildItemIntervalo("% Gordura", isFem ? "18% - 28%" : "10% - 20%"),
+              _buildItemIntervalo("RCQ", isFem ? "0.70 - 0.85" : "0.80 - 0.95"),
+              _buildItemIntervalo("CMB", isFem ? "20 - 29 cm" : "23 - 34 cm"),
+              
+              const Divider(height: 30),
+              const Text("Escala Visual (Máximos):",
                   style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
+              const SizedBox(height: 5),
               const Text(
-                  "As barras preenchem até um valor máximo visual para facilitar a leitura:",
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 8),
+                  "As barras preenchem até este valor máximo:",
+                  style: TextStyle(fontSize: 11, color: Colors.grey)),
+              const SizedBox(height: 10),
               _buildItemEscala("Peso Total", "até 150 kg"),
               _buildItemEscala("Massa Gorda", "até 50 kg"),
-              _buildItemEscala("Massa Muscular", "até 60 kg"),
-              _buildItemEscala("Gordura %", "até 60%"),
+              // REMOVIDO: Massa Muscular da escala visual
+              _buildItemEscala("Gordura %", "até 50%"), 
               _buildItemEscala("IMC", "até 50 kg/m²"),
-              _buildItemEscala("CMB (Braço)", "até 60 cm"),
+              _buildItemEscala("CMB", "até 60 cm"),
               _buildItemEscala("RCQ", "até 1.2"),
             ],
           ),
@@ -97,38 +134,42 @@ class _AntropometriaVisualizacaoPageState
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Entendi",
-                style: TextStyle(color: AppColors.roxo)),
+                style: TextStyle(color: AppColors.roxo, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildItemLegendaDialog(String titulo, Color cor, String descricao) {
+  Widget _buildLegendaItemCor(String label, Color color) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 12,
           height: 12,
-          margin: const EdgeInsets.only(top: 4, right: 8),
-          decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(titulo,
-                  style: TextStyle(
-                      color: cor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14)),
-              Text(descricao,
-                  style: const TextStyle(color: Colors.black87, fontSize: 12)),
-            ],
-          ),
-        ),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
       ],
+    );
+  }
+
+  Widget _buildItemIntervalo(String titulo, String range) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8)
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(titulo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(range, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50))),
+        ],
+      ),
     );
   }
 
@@ -137,8 +178,8 @@ class _AntropometriaVisualizacaoPageState
       padding: const EdgeInsets.only(bottom: 4.0),
       child: Row(
         children: [
-          const Icon(Icons.bar_chart, size: 14, color: Colors.grey),
-          const SizedBox(width: 6),
+          const Icon(Icons.bar_chart, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
           Expanded(
             child: RichText(
               text: TextSpan(
@@ -243,7 +284,7 @@ class _AntropometriaVisualizacaoPageState
                                   Icon(Icons.info_outline,
                                       size: 16, color: AppColors.roxo),
                                   SizedBox(width: 4),
-                                  Text('+ Saiba mais',
+                                  Text('+ Referências',
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
@@ -272,13 +313,8 @@ class _AntropometriaVisualizacaoPageState
                               _ultimaAvaliacao!.percentualGordura,
                               '%',
                               _ultimaAvaliacao!.classPercentualGordura,
-                              maxVal: 60.0),
-                          _buildIndicadorBarra(
-                              'Massa Esquelética',
-                              _ultimaAvaliacao!.massaEsqueletica,
-                              'kg',
-                              _ultimaAvaliacao!.classMassaEsqueletica,
-                              maxVal: 60.0),
+                              maxVal: 50.0), 
+                          // REMOVIDO: Barra de Massa Esquelética
                           _buildIndicadorBarra(
                               'IMC',
                               _ultimaAvaliacao!.imc,
@@ -335,13 +371,7 @@ class _AntropometriaVisualizacaoPageState
                             corLinha: AppColors.roxo,
                             unidade: 'kg',
                           ),
-                          _buildGraficoCard(
-                            titulo: "Massa Muscular Esquelética (kg)",
-                            dados: _historico,
-                            getValor: (a) => a.massaEsqueletica ?? 0,
-                            corLinha: const Color(0xFF4CAF50),
-                            unidade: 'kg',
-                          ),
+                          // REMOVIDO: Gráfico de Massa Muscular Esquelética
                           _buildGraficoCard(
                             titulo: "Percentual de Gordura (%)",
                             dados: _historico,
@@ -432,41 +462,27 @@ class _AntropometriaVisualizacaoPageState
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            flex: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8)),
-              child: Text(label,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600)),
-            ),
+              Text('${v.toStringAsFixed(1)}$unidade',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: cor, fontSize: 12)),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 5,
-            child: Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: percent,
-                      minHeight: 12,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(cor),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text('${v.toStringAsFixed(1)}$unidade',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: cor, fontSize: 12)),
-              ],
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: percent,
+              minHeight: 10,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(cor),
             ),
           ),
         ],
