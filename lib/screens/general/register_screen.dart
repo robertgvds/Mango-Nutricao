@@ -215,7 +215,6 @@ class RegisterScreenState extends State<RegisterScreen> {
 
             // CAMPO GÊNERO (Mesmo design do ToggleButtons acima)
             const SizedBox(height: 15),
-            const Text("Gênero", style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Center(
               child: ToggleButtons(

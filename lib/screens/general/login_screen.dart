@@ -46,12 +46,22 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 50),
             Center(
               child: Container(
-                width: 150, height: 150,
-                decoration: const BoxDecoration(color: AppColors.roxoClaro, shape: BoxShape.circle),
-                child: Image.asset('assets/fruta_logo.png', errorBuilder: (c, e, s) => const Icon(Icons.person, size: 80)),
+                width: 150, // Tamanho do círculo mantido
+                height: 150,
+                decoration: const BoxDecoration(
+                  color: AppColors.roxoClaro, 
+                  shape: BoxShape.circle,
+                ),
+                child: Transform.scale(
+                  scale: 1.2, // 1.0 é o tamanho normal. 1.2 aumenta em 20%
+                  child: Image.asset(
+                    'assets/imagem_logo_manga.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 30),
+                        const SizedBox(height: 30),
             const Text("Login", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             _buildTextField("E-mail", _emailController),

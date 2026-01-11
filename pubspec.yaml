@@ -74,6 +74,7 @@ flutter:
   
   assets:
     - assets/images/
+    - assets/imagem_logo_manga.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
