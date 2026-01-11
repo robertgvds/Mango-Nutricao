@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 
 import 'package:app/screens/general/login_screen.dart';
-import 'nutricionista/nutricionista_antropometria_screen.dart';
+import 'nutricionista/nutricionista_detalhes_paciente_screen.dart';
 import 'paciente/paciente_antropometria_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -38,14 +38,14 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   // Alterado de int para String para compatibilidade com Firebase
-  final String idPacienteTeste = "ID_PACIENTE_TESTE"; 
+  final String idPacienteTeste = "ID_PACIENTE_TESTE";
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Tela Principal")),
       body: Center(
-        child: SingleChildScrollView( 
+        child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -56,18 +56,26 @@ class HomePage extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
                   );
                 },
                 child: const Text("Ir para Tela de Login"),
               ),
 
               const SizedBox(height: 40),
-              const Divider(thickness: 2), 
-              const Text("Área de Teste: Antropometria", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+              const Divider(thickness: 2),
+              const Text(
+                "Área de Teste: Antropometria",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
               const SizedBox(height: 20),
 
-              // Botão Nutricionista 
+              // Botão Nutricionista
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
@@ -79,17 +87,18 @@ class HomePage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => NutricionistaAntropometriaScreen(
-                        pacienteId: idPacienteTeste,
-                      ),
+                      builder:
+                          (context) => NutricionistaAntropometriaScreen(
+                            pacienteId: idPacienteTeste,
+                          ),
                     ),
                   );
                 },
               ),
-              
+
               const SizedBox(height: 15),
 
-              // Botão Paciente 
+              // Botão Paciente
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
@@ -101,9 +110,10 @@ class HomePage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AntropometriaVisualizacaoPage(
-                        pacienteId: idPacienteTeste,
-                      ),
+                      builder:
+                          (context) => AntropometriaVisualizacaoPage(
+                            pacienteId: idPacienteTeste,
+                          ),
                     ),
                   );
                 },

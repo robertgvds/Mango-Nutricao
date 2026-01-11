@@ -6,7 +6,7 @@ import 'package:app/services/auth_service.dart';
 import 'package:provider/provider.dart';
 
 // Importante: certifique-se que o caminho está correto
-import 'nutricionista_antropometria_screen.dart';
+import 'nutricionista_detalhes_paciente_screen.dart';
 
 class NutricionistaListaPacientesScreen extends StatefulWidget {
   const NutricionistaListaPacientesScreen({super.key});

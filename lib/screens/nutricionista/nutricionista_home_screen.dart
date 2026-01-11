@@ -7,7 +7,7 @@ import '../../classes/nutricionista.dart';
 import '../../database/nutricionista_repository.dart';
 import '../../database/paciente_repository.dart';
 import '../../classes/paciente.dart';
-import 'nutricionista_antropometria_screen.dart';
+import 'nutricionista_detalhes_paciente_screen.dart';
 import '../../database/antropometria_repository.dart';
 import '../../database/plano_alimentar_repository.dart';
 import '../../classes/planoalimentar.dart';
