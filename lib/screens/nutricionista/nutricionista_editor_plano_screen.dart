@@ -604,7 +604,9 @@ class _CriarAlimentoScreenState extends State<_CriarAlimentoScreen> {
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.verde, padding: const EdgeInsets.symmetric(vertical: 16), shape: AppStyles.shapeButton),
                     child: const Text("ADICIONAR AO PLANO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                )
+                ),
+
+                const SizedBox(height: 100),
               ],
             ),
           ),
