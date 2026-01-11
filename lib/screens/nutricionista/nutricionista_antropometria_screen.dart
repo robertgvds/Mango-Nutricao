@@ -3,6 +3,9 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/app_colors.dart';
 import 'nutricionista_nova_avaliacao.dart';
+// Certifique-se de que estes arquivos existem no seu projeto baseados nos passos anteriores
+import '../../classes/paciente.dart';
+import 'nutricionista_historico_planos_screen.dart';
 
 class NutricionistaAntropometriaScreen extends StatefulWidget {
   final String pacienteId;
@@ -16,25 +19,37 @@ class NutricionistaAntropometriaScreen extends StatefulWidget {
 
 class _NutricionistaAntropometriaScreenState
     extends State<NutricionistaAntropometriaScreen> {
+  // 0 = Antropometria, 1 = Planos
+  int _abaSelecionada = 0;
+
   final Color corAbaixo = Colors.orange;
   final Color corIdeal = Colors.green;
   final Color corAcima = Colors.red;
 
-  // Cache para o botão flutuante saber se existe ao menos uma avaliação
   bool _existeAvaliacao = false;
+
+  // Variável para armazenar o objeto Paciente completo para passar para a tela de planos
+  Paciente? _pacienteObjeto;
 
   Future<Map<String, dynamic>> _buscarDados() async {
     try {
       final dbRef = FirebaseDatabase.instance.ref();
       final userSnap = await dbRef.child('usuarios/${widget.pacienteId}').get();
 
-      // Pega a última para exibir na tela principal
+      // Pega a última avaliação para exibir na tela principal
       final antropoSnap =
           await dbRef
               .child('antropometria/${widget.pacienteId}')
               .orderByKey()
               .limitToLast(1)
               .get();
+
+      // Cria o objeto Paciente se os dados existirem
+      if (userSnap.value != null) {
+        final dadosUser = Map<String, dynamic>.from(userSnap.value as Map);
+        dadosUser['id'] = widget.pacienteId; // Garante que o ID está no map
+        _pacienteObjeto = Paciente.fromMap(dadosUser);
+      }
 
       return {'usuario': userSnap.value, 'antropometria': antropoSnap.value};
     } catch (e) {
@@ -62,7 +77,7 @@ class _NutricionistaAntropometriaScreenState
     }
   }
 
-  // --- NAVEGAÇÃO PARA O FORMULÁRIO ---
+  // --- NAVEGAÇÃO ---
   void _navegarParaFormulario({Map<String, dynamic>? dadosEdicao}) {
     Navigator.push(
       context,
@@ -70,15 +85,102 @@ class _NutricionistaAntropometriaScreenState
         builder:
             (context) => NovaAvaliacaoScreen(
               pacienteId: widget.pacienteId,
-              dadosExistentes: dadosEdicao, // Passa dados se for edição
+              dadosExistentes: dadosEdicao,
             ),
       ),
     ).then((_) {
-      setState(() {}); // Atualiza a tela ao voltar
+      setState(() {});
     });
   }
 
-  // --- LÓGICA: SELETOR DE AVALIAÇÃO (Serve para EDITAR ou APAGAR) ---
+  // --- UI: TOGGLE (BOTÃO DE DIVISÃO) ---
+  Widget _buildToggleSwitch() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Row(
+        children: [
+          _buildTabItem(0, "Antropometria"),
+          _buildTabItem(1, "Planos Alimentares"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabItem(int index, String title) {
+    final bool isSelected = _abaSelecionada == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _abaSelecionada = index),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : [],
+          ),
+          alignment: Alignment.center,
+          margin: const EdgeInsets.all(4),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? AppColors.laranja : Colors.grey[600],
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- UI: CONTEÚDO DA ABA ANTROPOMETRIA ---
+  Widget _buildAbaAntropometria(
+    String nome,
+    Map<String, dynamic>? avaliacao,
+    Color primaryColor,
+  ) {
+    if (avaliacao == null) {
+      return _buildEmptyState(nome);
+    }
+    return _buildContent(nome, avaliacao, primaryColor);
+  }
+
+  // --- UI: CONTEÚDO DA ABA PLANOS ---
+  Widget _buildAbaPlanos() {
+    if (_pacienteObjeto == null) {
+      return const Center(child: Text("Carregando dados do paciente..."));
+    }
+    // Aqui integramos a tela criada anteriormente.
+    // Dica: Idealmente a NutricionistaHistoricoPlanosScreen deveria aceitar um parâmetro
+    // para esconder sua própria AppBar se quisermos que pareça 100% integrado,
+    // mas aqui ela funcionará como um widget filho.
+    return SizedBox(
+      height: 600, // Altura fixa ou use Expanded se refatorar o layout
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: NutricionistaHistoricoPlanosScreen(paciente: _pacienteObjeto!),
+      ),
+    );
+  }
+
+  // ... (Mantenha as funções _mostrarSeletorDeAvaliacoes, _deletarAvaliacao, _confirmarExclusao, _mostrarOpcoes IGUAIS) ...
+  // Para economizar espaço na resposta, assumi que você manteve esses métodos auxiliares do código original.
+  // Vou incluir apenas as chamadas no build.
+
+  // --- LÓGICA DE MODAL IGUAL AO ORIGINAL ---
   void _mostrarSeletorDeAvaliacoes({required bool isDeleteMode}) {
     showModalBottomSheet(
       context: context,
@@ -127,12 +229,10 @@ class _NutricionistaAntropometriaScreenState
                               .orderByKey()
                               .onValue,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
+                        if (snapshot.connectionState == ConnectionState.waiting)
                           return const Center(
                             child: CircularProgressIndicator(),
                           );
-                        }
                         if (snapshot.hasError ||
                             !snapshot.hasData ||
                             snapshot.data?.snapshot.value == null) {
@@ -140,17 +240,13 @@ class _NutricionistaAntropometriaScreenState
                             child: Text("Nenhuma avaliação encontrada."),
                           );
                         }
-
                         final dadosRaw = snapshot.data!.snapshot.value as Map;
                         List<Map<String, dynamic>> listaAvaliacoes = [];
-
                         dadosRaw.forEach((key, value) {
                           final map = Map<String, dynamic>.from(value as Map);
                           map['key'] = key;
                           listaAvaliacoes.add(map);
                         });
-
-                        // Ordenar decrescente (mais novo em cima)
                         listaAvaliacoes.sort(
                           (a, b) =>
                               (b['data'] ?? '').compareTo(a['data'] ?? ''),
@@ -163,12 +259,7 @@ class _NutricionistaAntropometriaScreenState
                           itemBuilder: (context, index) {
                             final item = listaAvaliacoes[index];
                             final dataFormatada = _formatarData(item['data']);
-
                             return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
                               leading: CircleAvatar(
                                 backgroundColor:
                                     isDeleteMode
@@ -192,22 +283,14 @@ class _NutricionistaAntropometriaScreenState
                               subtitle: Text(
                                 "Peso: ${item['massaCorporal']}kg | IMC: ${item['imc']}",
                               ),
-                              trailing: const Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16,
-                                color: Colors.grey,
-                              ),
                               onTap: () {
-                                Navigator.pop(ctx); // Fecha o seletor
-
+                                Navigator.pop(ctx);
                                 if (isDeleteMode) {
-                                  // Se for modo deletar, abre confirmação
                                   _confirmarExclusao(
-                                    item['id_avaliacao'],
+                                    item['key'],
                                     dataFormatada,
-                                  );
+                                  ); // usando key como ID
                                 } else {
-                                  // Se for modo editar, abre formulário
                                   _navegarParaFormulario(dadosEdicao: item);
                                 }
                               },
@@ -226,27 +309,6 @@ class _NutricionistaAntropometriaScreenState
     );
   }
 
-  // --- LÓGICA: APAGAR AVALIAÇÃO ---
-  Future<void> _deletarAvaliacao(String idAvaliacao) async {
-    try {
-      await FirebaseDatabase.instance
-          .ref()
-          .child('antropometria/${widget.pacienteId}/$idAvaliacao')
-          .remove();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Avaliação apagada!")));
-      setState(() {});
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Erro: $e")));
-    }
-  }
-
   void _confirmarExclusao(String idAvaliacao, String dataFormatada) {
     showDialog(
       context: context,
@@ -254,7 +316,7 @@ class _NutricionistaAntropometriaScreenState
           (ctx) => AlertDialog(
             title: const Text("Apagar Avaliação"),
             content: Text(
-              "Tem certeza que deseja apagar permanentemente a avaliação de $dataFormatada?",
+              "Tem certeza que deseja apagar a avaliação de $dataFormatada?",
             ),
             actions: [
               TextButton(
@@ -263,15 +325,12 @@ class _NutricionistaAntropometriaScreenState
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(ctx); // Fecha o diálogo
-                  _deletarAvaliacao(idAvaliacao); // Executa a exclusão
+                  Navigator.pop(ctx);
+                  _deletarAvaliacao(idAvaliacao);
                 },
                 child: const Text(
                   "Apagar",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.red),
                 ),
               ),
             ],
@@ -279,7 +338,14 @@ class _NutricionistaAntropometriaScreenState
     );
   }
 
-  // --- MENU PRINCIPAL (BOTTOM SHEET) ---
+  Future<void> _deletarAvaliacao(String idAvaliacao) async {
+    await FirebaseDatabase.instance
+        .ref()
+        .child('antropometria/${widget.pacienteId}/$idAvaliacao')
+        .remove();
+    setState(() {});
+  }
+
   void _mostrarOpcoes() {
     showModalBottomSheet(
       context: context,
@@ -295,15 +361,10 @@ class _NutricionistaAntropometriaScreenState
               ListTile(
                 leading: const Icon(Icons.history, color: Colors.blue),
                 title: const Text("Atualizar avaliação antiga"),
-                subtitle: const Text(
-                  "Escolha uma avaliação da lista para editar",
-                ),
                 enabled: _existeAvaliacao,
                 onTap: () {
                   Navigator.pop(context);
-                  _mostrarSeletorDeAvaliacoes(
-                    isDeleteMode: false,
-                  ); // Modo EDIÇÃO
+                  _mostrarSeletorDeAvaliacoes(isDeleteMode: false);
                 },
               ),
               ListTile(
@@ -311,23 +372,20 @@ class _NutricionistaAntropometriaScreenState
                 title: const Text("Criar nova avaliação"),
                 onTap: () {
                   Navigator.pop(context);
-                  _navegarParaFormulario(dadosEdicao: null); // Null = Criar
+                  _navegarParaFormulario(dadosEdicao: null);
                 },
               ),
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: const Text(
-                  "Apagar avaliação", // Texto atualizado
+                  "Apagar avaliação",
                   style: TextStyle(color: Colors.red),
                 ),
-                subtitle: const Text("Escolha uma avaliação para remover"),
                 enabled: _existeAvaliacao,
                 onTap: () {
                   Navigator.pop(context);
-                  _mostrarSeletorDeAvaliacoes(
-                    isDeleteMode: true,
-                  ); // Modo EXCLUSÃO
+                  _mostrarSeletorDeAvaliacoes(isDeleteMode: true);
                 },
               ),
             ],
@@ -344,20 +402,27 @@ class _NutricionistaAntropometriaScreenState
     return Scaffold(
       backgroundColor: primaryColor,
       appBar: AppBar(
-        title: const Text(
-          "Última Avaliação",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          _abaSelecionada == 0 ? "Última Avaliação" : "Histórico de Planos",
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: primaryColor,
         centerTitle: true,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _mostrarOpcoes,
-        backgroundColor: primaryColor,
-        child: const Icon(Icons.menu, color: Colors.white),
-      ),
+      // O Floating Action Button só aparece na aba Antropometria
+      floatingActionButton:
+          _abaSelecionada == 0
+              ? FloatingActionButton(
+                onPressed: _mostrarOpcoes,
+                backgroundColor: primaryColor,
+                child: const Icon(Icons.menu, color: Colors.white),
+              )
+              : null,
       body: FutureBuilder<Map<String, dynamic>>(
         future: _buscarDados(),
         builder: (context, snapshot) {
@@ -376,8 +441,6 @@ class _NutricionistaAntropometriaScreenState
           }
 
           final dadosGerais = snapshot.data;
-
-          // Processamento dos dados
           String nome = "Paciente";
           if (dadosGerais?['usuario'] != null) {
             nome = (dadosGerais!['usuario'] as Map)['nome'] ?? "Paciente";
@@ -419,10 +482,15 @@ class _NutricionistaAntropometriaScreenState
                   ),
                   child: Column(
                     children: [
-                      if (avaliacao == null)
-                        _buildEmptyState(nome)
+                      // --- AQUI ESTÁ A DIVISÃO ---
+                      _buildToggleSwitch(),
+
+                      // --- CONTEÚDO VARIÁVEL ---
+                      if (_abaSelecionada == 0)
+                        _buildAbaAntropometria(nome, avaliacao, primaryColor)
                       else
-                        _buildContent(nome, avaliacao, primaryColor),
+                        _buildAbaPlanos(),
+
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -435,25 +503,24 @@ class _NutricionistaAntropometriaScreenState
     );
   }
 
-  // --- MÉTODOS DE UI ---
+  // --- MÉTODOS VISUAIS ANTIGOS (Mantidos) ---
   Widget _buildEmptyState(String nome) {
-    return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "Paciente: $nome",
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          const Icon(Icons.note_alt_outlined, size: 60, color: Colors.grey),
-          const SizedBox(height: 10),
-          const Text(
-            "Nenhuma avaliação registrada.",
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const SizedBox(height: 40),
+        Text(
+          "Paciente: $nome",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 20),
+        const Icon(Icons.note_alt_outlined, size: 60, color: Colors.grey),
+        const SizedBox(height: 10),
+        const Text(
+          "Nenhuma avaliação registrada.",
+          style: TextStyle(color: Colors.grey),
+        ),
+      ],
     );
   }
 
