@@ -16,7 +16,7 @@ class RegisterScreen extends StatefulWidget {
 
 class RegisterScreenState extends State<RegisterScreen> {
   UserType _selectedUser = UserType.paciente;
-  String _generoSelecionado = 'Feminino'; // Valor padrão para o gênero
+  String _generoSelecionado = 'Feminino'; 
   bool _estaCarregando = false;
 
   final _nomeController = TextEditingController();
@@ -126,7 +126,8 @@ class RegisterScreenState extends State<RegisterScreen> {
         _nomeController.text.trim(),
         _selectedUser == UserType.paciente ? 'paciente' : 'nutricionista',
         _selectedUser == UserType.nutricionista ? _crnController.text.trim() : null,
-        _generoSelecionado, // Passando o gênero selecionado para o serviço
+        _generoSelecionado, 
+        _dataNascController.text.trim(), // <--- Dado persistido aqui
       );
 
       if (mounted) {
@@ -213,9 +214,7 @@ class RegisterScreenState extends State<RegisterScreen> {
             if (_dataNascController.text.length == 10 && _validarDataNascimento(_dataNascController.text) != null)
               _buildErrorMessage(_validarDataNascimento(_dataNascController.text)!),
 
-            // CAMPO GÊNERO (Mesmo design do ToggleButtons acima)
             const SizedBox(height: 15),
-            const SizedBox(height: 8),
             Center(
               child: ToggleButtons(
                 borderRadius: BorderRadius.circular(30),
