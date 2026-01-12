@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_colors.dart';
+import '../../widgets/app_styles.dart'; // [IMPORTANTE] Importando os estilos
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -23,7 +24,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _resetarSenha() async {
     if (_emailController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Digite seu e-mail"), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text("Por favor, digite seu e-mail."), 
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -36,8 +41,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("E-mail de redefinição enviado! Verifique sua caixa de entrada."), 
-            backgroundColor: Colors.green
+            content: Text("E-mail enviado! Verifique sua caixa de entrada."), 
+            backgroundColor: AppColors.verde, // Verde para sucesso
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.pop(context); 
@@ -45,7 +51,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString()), 
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -53,75 +63,116 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.emailAddress,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: true,
-          fillColor: AppColors.cinzaClaro,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30), 
-            borderSide: BorderSide.none
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white, 
+        elevation: 0, 
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Recuperar Senha",
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+              
+              // --- ÍCONE ILUSTRATIVO ---
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.verde.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.lock_reset,
+                  size: 50,
+                  color: AppColors.verde,
+                ),
+              ),
+              
+              const SizedBox(height: 30),
+              
+              const Text(
+                "Esqueceu sua senha?",
+                style: TextStyle(
+                  fontSize: 24, 
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.black87
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              Text(
+                "Não se preocupe! Digite seu e-mail abaixo e enviaremos instruções para redefinir sua senha.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
+              ),
+              
+              const SizedBox(height: 40),
+              
+              // --- CAMPO DE E-MAIL ---
+              _buildTextField("Digite seu e-mail", _emailController),
+              
+              const SizedBox(height: 30),
+              
+              // --- BOTÃO DE AÇÃO ---
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _estaCarregando ? null : _resetarSenha,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.verde,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
+                    // PADRÃO: Radius 16 via AppStyles
+                    shape: AppStyles.shapeButton,
+                    elevation: 0,
+                  ),
+                  child: _estaCarregando 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text(
+                        "ENVIAR LINK", 
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                      ),
+                ),
+              ),
+            ],
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.branco,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent, 
-        elevation: 0, 
-        iconTheme: const IconThemeData(color: Colors.black)
-      ),
-      body: SingleChildScrollView( // Adicionado para evitar erro de overflow ao abrir teclado
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            const Text(
-              "Recuperar Senha",
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.black),
-            ),
-            const SizedBox(height: 15),
-            const Text(
-              "Digite o e-mail cadastrado. Enviaremos um link para você definir uma nova senha.",
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 40),
-            
-            _buildTextField("E-mail", _emailController),
-            
-            const SizedBox(height: 30),
-            
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: _estaCarregando ? null : _resetarSenha,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.verdeEscuro, // Padronizado com o botão da LoginScreen
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                child: _estaCarregando 
-                  ? const CircularProgressIndicator(color: Colors.white) 
-                  : const Text(
-                      "ENVIAR LINK", 
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)
-                    ),
-              ),
-            ),
-          ],
+  Widget _buildTextField(String hint, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.emailAddress,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.cinzaClaro,
+        // PADRÃO: Radius 16 via AppStyles
+        border: OutlineInputBorder(
+          borderRadius: AppStyles.borderButton, 
+          borderSide: BorderSide.none
         ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
     );
   }

@@ -1,160 +1,65 @@
-import 'db.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../classes/nutricionista.dart';
-import '../classes/usuario.dart'; // Necessário para a evolução de Usuario → Nutricionista
 
-// Repository responsável pelo acesso aos dados da entidade Nutricionista
-// Centraliza toda a lógica de persistência no banco de dados
 class NutricionistaRepository {
-  // ------------------------------------------------------------------
-  // NOVO MÉTODO: VERIFICAÇÃO DE EMAIL
-  // ------------------------------------------------------------------
-  // Verifica se o email já está cadastrado em qualquer tabela (Nutri, Paciente ou Usuario)
-  // Retorna true se encontrar, false se não encontrar.
-  Future<bool> verificarEmailExiste(String email) async {
-    final db = await DB.get();
+  final FirebaseDatabase _db = FirebaseDatabase.instance;
 
-    // 1. Verifica na tabela de nutricionistas
-    final List<Map<String, dynamic>> resNutri = await db.query(
-      'nutricionistas',
-      columns: ['id'],
-      where: 'email = ?',
-      whereArgs: [email],
-    );
-    if (resNutri.isNotEmpty) return true;
+  /// Busca os dados do nutricionista pelo ID (UID do Firebase)
+  Future<Nutricionista?> buscarPorId(String id) async {
+    try {
+      final ref = _db.ref('usuarios/$id');
+      final snapshot = await ref.get();
 
-    // 2. Verifica na tabela de pacientes
-    final List<Map<String, dynamic>> resPaciente = await db.query(
-      'pacientes',
-      columns: ['id'],
-      where: 'email = ?',
-      whereArgs: [email],
-    );
-    if (resPaciente.isNotEmpty) return true;
+      if (snapshot.exists && snapshot.value != null) {
+        // Converte o retorno do Firebase para Map<String, dynamic>
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        data['id'] = id; // Garante que o ID esteja no mapa
 
-    // 3. Verifica na tabela base de usuarios
-    final List<Map<String, dynamic>> resUsuario = await db.query(
-      'usuarios',
-      columns: ['id'],
-      where: 'email = ?',
-      whereArgs: [email],
-    );
-    if (resUsuario.isNotEmpty) return true;
-
-    return false;
-  }
-
-  // ------------------------------------------------------------------
-  // MÉTODO DE EVOLUÇÃO
-  // ------------------------------------------------------------------
-  // Transforma um Usuario existente em um Nutricionista
-  // 1) Busca o usuário na tabela base
-  // 2) Converte para Nutricionista
-  // 3) Insere na tabela de nutricionistas e remove da tabela de usuários
-  // Tudo isso é feito dentro de uma transação para garantir consistência
-  Future<void> evoluirDeUsuario(int usuarioId, String crn) async {
-    final db = await DB.get();
-
-    // Busca o usuário base na tabela 'usuarios' pelo ID
-    final result = await db.query(
-      'usuarios',
-      where: 'id = ?',
-      whereArgs: [usuarioId],
-    );
-
-    // Caso o usuário não seja encontrado, interrompe o processo
-    if (result.isEmpty) {
-      throw Exception("Usuário base não encontrado para evolução.");
+        // Verifica se o usuário tem perfil de nutricionista (opcional, mas recomendado)
+        // Você pode remover a verificação de 'crn' se nem todos tiverem preenchido ainda
+        return Nutricionista.fromMap(data);
+      }
+      return null;
+    } catch (e) {
+      print("Erro ao buscar nutricionista: $e");
+      return null;
     }
-
-    // Converte o Map retornado do banco para um objeto Usuario
-    final usuarioBase = Usuario.fromMap(result.first);
-
-    // Cria um novo objeto Nutricionista a partir do Usuario existente
-    final novoNutri = Nutricionista.fromUsuario(usuarioBase, crn: crn);
-
-    // Executa a operação de forma transacional
-    // Garante que a inserção e a exclusão ocorram juntas
-    await db.transaction((txn) async {
-      // Insere o nutricionista na tabela 'nutricionistas'
-      await txn.insert('nutricionistas', novoNutri.toMap());
-
-      // Remove o usuário da tabela 'usuarios'
-      await txn.delete('usuarios', where: 'id = ?', whereArgs: [usuarioId]);
-    });
   }
 
-  // ------------------------------------------------------------------
-  // MÉTODOS CRUD
-  // ------------------------------------------------------------------
+  /// Atualiza os dados do nutricionista (incluindo a lista de pacientes vinculados)
+  Future<void> atualizar(Nutricionista nutricionista) async {
+    if (nutricionista.id == null) return;
 
-  // Insere um novo nutricionista no banco
-  // Retorna o ID gerado pelo SQLite
-  Future<int> inserir(Nutricionista nutricionista) async {
-    final db = await DB.get();
-    return await db.insert('nutricionistas', nutricionista.toMap());
+    try {
+      // O método toMap() da classe Nutricionista já deve lidar com a lista de IDs
+      await _db.ref('usuarios/${nutricionista.id}').update(nutricionista.toMap());
+    } catch (e) {
+      print("Erro ao atualizar nutricionista: $e");
+      rethrow;
+    }
   }
 
-  // Atualiza os dados de um nutricionista existente
-  // Usa o ID como critério de atualização
-  Future<int> atualizar(Nutricionista nutricionista) async {
-    final db = await DB.get();
-    return await db.update(
-      'nutricionistas',
-      nutricionista.toMap(),
-      where: 'id = ?',
-      whereArgs: [nutricionista.id],
-    );
-  }
-
-  // Retorna a lista de todos os nutricionistas cadastrados
-  Future<List<Nutricionista>> listar() async {
-    final db = await DB.get();
-
-    // Consulta todos os registros da tabela
-    final result = await db.query('nutricionistas');
-
-    // Converte cada Map em um objeto Nutricionista
-    return result.map((e) => Nutricionista.fromMap(e)).toList();
-  }
-
-  // Busca um nutricionista pelo ID
-  // Retorna null caso não seja encontrado
-  Future<Nutricionista?> buscarPorId(int id) async {
-    final db = await DB.get();
-
-    final result = await db.query(
-      'nutricionistas',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-
-    return result.isNotEmpty ? Nutricionista.fromMap(result.first) : null;
-  }
-
-  // Busca um nutricionista pelo CRN
-  // Útil para validações e autenticação profissional
   Future<Nutricionista?> buscarPorCRN(String crn) async {
-    final db = await DB.get();
+    try {
+      final ref = _db.ref('usuarios');
+      // Filtra os usuários procurando onde o campo 'crn' é igual ao valor passado
+      final snapshot = await ref.orderByChild('crn').equalTo(crn).get();
 
-    final result = await db.query(
-      'nutricionistas',
-      where: 'crn = ?',
-      whereArgs: [crn],
-    );
+      if (snapshot.exists && snapshot.value != null) {
+        // O Firebase retorna um Map onde a chave é o ID do usuário (ex: { "uid123": { ...dados... } })
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        
+        // Pegamos o primeiro resultado encontrado
+        final key = data.keys.first;
+        final map = Map<String, dynamic>.from(data[key]);
+        map['id'] = key; // Injeta o ID no mapa
 
-    return result.isNotEmpty ? Nutricionista.fromMap(result.first) : null;
-  }
-
-  // Remove um nutricionista do banco pelo ID
-  Future<int> excluir(int id) async {
-    final db = await DB.get();
-    return await db.delete('nutricionistas', where: 'id = ?', whereArgs: [id]);
-  }
-
-  // Remove todos os registros da tabela de nutricionistas
-  // Útil para testes ou reset de dados
-  Future<void> limparTabela() async {
-    final db = await DB.get();
-    await db.delete('nutricionistas');
+        return Nutricionista.fromMap(map);
+      }
+      return null;
+    } catch (e) {
+      print("Erro ao buscar nutricionista por CRN: $e");
+      return null;
+    }
   }
 }

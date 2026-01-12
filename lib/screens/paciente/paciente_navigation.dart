@@ -24,22 +24,19 @@ class _PacienteNavigationState extends State<PacienteNavigation> {
     _currentIndex = widget.currentPageIndex;
   }
 
-  Color _getBackgroundColor(int index) {
-    return switch (index) {
-      0 => AppColors.laranja,
-      1 => AppColors.roxo,
-      2 => AppColors.verde,
-      _ => Colors.white,
-    };
-  }
-
-  Color _getForegroundColor(int index) {
+  Color _getIndicatorColor(int index) {
     return switch (index) {
       0 => AppColors.laranjaClaro,
       1 => AppColors.roxoClaro,
       2 => AppColors.verdeClaro,
       _ => Colors.black,
     };
+  }
+
+  void _navegarPara(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
   }
 
   @override
@@ -50,7 +47,7 @@ class _PacienteNavigationState extends State<PacienteNavigation> {
 
     // 2. Cria a lista de telas passando o ID correto (String)
     final List<Widget> screens = [
-      HomeTabScreen(pacienteId: uidUsuario),           // Index 0
+      HomeTabScreen(pacienteId: uidUsuario, onMudarAba: _navegarPara),           // Index 0
       AntropometriaVisualizacaoPage(pacienteId: uidUsuario), // Index 1
       const PacientePlanoAlimentarScreen(),            // Index 2
     ];
@@ -64,8 +61,8 @@ class _PacienteNavigationState extends State<PacienteNavigation> {
         },
         selectedIndex: _currentIndex,
         backgroundColor: Colors.white,
-        indicatorColor: _getForegroundColor(_currentIndex),
-        surfaceTintColor: _getForegroundColor(_currentIndex),
+        indicatorColor: _getIndicatorColor(_currentIndex),
+        surfaceTintColor: _getIndicatorColor(_currentIndex),
         destinations: const <Widget>[
           NavigationDestination(
             selectedIcon: Icon(Icons.home),

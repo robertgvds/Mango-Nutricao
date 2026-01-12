@@ -8,6 +8,7 @@ class AntropometriaRepository {
   Future<void> salvarAvaliacao(String pacienteUid, Antropometria dados) async {
     try {
       // Se não tiver ID, gera um novo via timestamp
+      // (Isso garante que o ID seja criado antes de salvar)
       if (dados.id_avaliacao == null || dados.id_avaliacao!.isEmpty) {
         dados.id_avaliacao = DateTime.now().millisecondsSinceEpoch.toString();
       }
@@ -37,6 +38,8 @@ class AntropometriaRepository {
         data.forEach((key, value) {
           if (value is Map) {
             final mapConvertido = Map<String, dynamic>.from(value as Map);
+            // Garante que o ID da chave do banco esteja no objeto
+            mapConvertido['id_avaliacao'] = key; 
             lista.add(Antropometria.fromMap(mapConvertido));
           }
         });
@@ -58,5 +61,16 @@ class AntropometriaRepository {
       return lista.first;
     }
     return null;
+  }
+
+  // --- MÉTODO ADICIONADO PARA CORRIGIR O ERRO ---
+  Future<void> excluirAvaliacao(String pacienteUid, String idAvaliacao) async {
+    try {
+      await _db.ref('antropometria/$pacienteUid/$idAvaliacao').remove();
+      print("Avaliação $idAvaliacao excluída com sucesso.");
+    } catch (e) {
+      print("Erro ao excluir avaliação: $e");
+      rethrow;
+    }
   }
 }

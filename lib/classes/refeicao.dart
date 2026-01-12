@@ -1,60 +1,58 @@
-import "alimento.dart";
+import 'alimento.dart';
 
-// Classe que representa uma refeição do dia
-// Exemplo: Café da Manhã, Almoço, Lanche, Jantar
 class Refeicao {
-  // Nome da refeição
-  // Ex: "Café da Manhã", "Almoço", "Jantar"
-  String nome;
-
-  // Lista de alimentos que compõem a refeição
-  // Cada alimento possui informações como peso e calorias
+  String id;
+  String nome; // Ex: Café da Manhã
+  String horario; // Ex: 08:00
   List<Alimento> alimentos;
 
-  // Construtor da classe
-  // O nome da refeição é obrigatório
-  // A lista de alimentos é opcional e, por padrão, inicia vazia
-  Refeicao({required this.nome, this.alimentos = const []});
+  Refeicao({
+    required this.id,
+    required this.nome,
+    required this.horario,
+    required this.alimentos,
+  });
 
-  // Getter que calcula o peso total da refeição
-  // Soma o peso de todos os alimentos presentes na lista
-  double get pesoTotal {
-    return alimentos.fold(0, (soma, item) => soma + item.peso);
-  }
+  // --- Totais da Refeição (Calculados Dinamicamente) ---
+  
+  double get totalCalorias => alimentos.fold(0, (sum, item) => sum + item.calorias);
+  
+  double get totalProteinas => alimentos.fold(0, (sum, item) => sum + item.proteinas);
+  
+  double get totalCarboidratos => alimentos.fold(0, (sum, item) => sum + item.carboidratos);
+  
+  double get totalGorduras => alimentos.fold(0, (sum, item) => sum + item.gorduras);
 
-  // Getter que calcula o total de calorias da refeição
-  // Soma as calorias de todos os alimentos da lista
-  double get caloriasTotal {
-    return alimentos.fold(0, (soma, item) => soma + item.calorias);
-  }
+  double get totalFibras => alimentos.fold(0, (sum, item) => sum + item.fibras);
+  double get totalCalcio => alimentos.fold(0, (sum, item) => sum + item.calcio);
+  double get totalMagnesio => alimentos.fold(0, (sum, item) => sum + item.magnesio);
+  double get totalFerro => alimentos.fold(0, (sum, item) => sum + item.ferro);
+  double get totalPotassio => alimentos.fold(0, (sum, item) => sum + item.potassio);
+  double get totalVitC => alimentos.fold(0, (sum, item) => sum + item.vitC);
+  double get totalVitA => alimentos.fold(0, (sum, item) => sum + item.vitA);
 
-  // Converte o objeto Refeicao em um Map<String, dynamic>
-  // Usado para salvar os dados em banco de dados ou serializar em JSON
+  // --- Serialização para o Firebase ---
+
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'nome': nome,
-      // Converte cada objeto Alimento da lista em Map
+      'horario': horario,
       'alimentos': alimentos.map((x) => x.toMap()).toList(),
     };
   }
 
-  // Construtor factory que cria um objeto Refeicao a partir de um Map
-  // Normalmente utilizado ao recuperar dados do banco ou de um JSON
-  factory Refeicao.fromMap(Map<String, dynamic> map) {
+  factory Refeicao.fromMap(Map<Object?, Object?> map) {
+    final dados = Map<String, dynamic>.from(map);
     return Refeicao(
-      // Caso o nome não exista no Map, usa string vazia como padrão
-      nome: map['nome'] ?? '',
-      // Converte a lista de Maps em uma lista de objetos Alimento
-      alimentos:
-          map['alimentos'] != null
-              ? List<Alimento>.from(
-                (map['alimentos'] as List).map((x) => Alimento.fromMap(x)),
-              )
-              : [],
+      id: dados['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      nome: dados['nome'] ?? '',
+      horario: dados['horario'] ?? '',
+      alimentos: dados['alimentos'] != null
+          ? (dados['alimentos'] as List)
+              .map((x) => Alimento.fromMap(Map<String, dynamic>.from(x as Map)))
+              .toList()
+          : [],
     );
   }
-
-  // Método auxiliar para permitir que o jsonEncode
-  // funcione diretamente com objetos do tipo Refeicao
-  Map<String, dynamic> toJson() => toMap();
 }

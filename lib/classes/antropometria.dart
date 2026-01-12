@@ -1,10 +1,10 @@
 class Antropometria {
   String? id_avaliacao;
-  
 
   double? massaCorporal;
   double? massaGordura;
   double? percentualGordura;
+  double? massaMuscular; // [NOVO]
   double? massaEsqueletica;
   double? imc;
   double? cmb;
@@ -13,6 +13,7 @@ class Antropometria {
   String? classMassaCorporal;
   String? classMassaGordura;
   String? classPercentualGordura;
+  String? classMassaMuscular; // [NOVO]
   String? classMassaEsqueletica;
   String? classImc;
   String? classCmb;
@@ -26,6 +27,7 @@ class Antropometria {
     this.massaCorporal,
     this.massaGordura,
     this.percentualGordura,
+    this.massaMuscular,
     this.massaEsqueletica,
     this.imc,
     this.cmb,
@@ -33,11 +35,11 @@ class Antropometria {
     this.classMassaCorporal,
     this.classMassaGordura,
     this.classPercentualGordura,
+    this.classMassaMuscular,
     this.classMassaEsqueletica,
     this.classImc,
     this.classCmb,
     this.classRcq,
-    
     this.observacoes,
     this.data,
   });
@@ -48,6 +50,7 @@ class Antropometria {
       'massaCorporal': massaCorporal,
       'massaGordura': massaGordura,
       'percentualGordura': percentualGordura,
+      'massaMuscular': massaMuscular,
       'massaEsqueletica': massaEsqueletica,
       'imc': imc,
       'cmb': cmb,
@@ -55,11 +58,11 @@ class Antropometria {
       'classMassaCorporal': classMassaCorporal,
       'classMassaGordura': classMassaGordura,
       'classPercentualGordura': classPercentualGordura,
+      'classMassaMuscular': classMassaMuscular,
       'classMassaEsqueletica': classMassaEsqueletica,
       'classImc': classImc,
       'classCmb': classCmb,
       'classRcq': classRcq,
-
       'observacoes': observacoes,
       'data': data?.toIso8601String(),
     };
@@ -71,6 +74,7 @@ class Antropometria {
       massaCorporal: (map['massaCorporal'] as num?)?.toDouble(),
       massaGordura: (map['massaGordura'] as num?)?.toDouble(),
       percentualGordura: (map['percentualGordura'] as num?)?.toDouble(),
+      massaMuscular: (map['massaMuscular'] as num?)?.toDouble(),
       massaEsqueletica: (map['massaEsqueletica'] as num?)?.toDouble(),
       imc: (map['imc'] as num?)?.toDouble(),
       cmb: (map['cmb'] as num?)?.toDouble(),
@@ -78,11 +82,11 @@ class Antropometria {
       classMassaCorporal: map['classMassaCorporal'],
       classMassaGordura: map['classMassaGordura'],
       classPercentualGordura: map['classPercentualGordura'],
+      classMassaMuscular: map['classMassaMuscular'],
       classMassaEsqueletica: map['classMassaEsqueletica'],
       classImc: map['classImc'],
       classCmb: map['classCmb'],
       classRcq: map['classRcq'],
-
       observacoes: map['observacoes'] as String?,
       data: map['data'] != null ? DateTime.parse(map['data']) : null,
     );
